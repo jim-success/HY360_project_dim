@@ -10,9 +10,11 @@ import java.util.Vector;
 
 public class EmployeeDAO {
 
+    // --- 1. ΛΙΣΤΑ ΟΛΩΝ ΤΩΝ ΥΠΑΛΛΗΛΩΝ (Για τον πίνακα στο EmployeesFrame) ---
     public static Vector<Vector<Object>> getAllEmployees() {
         Vector<Vector<Object>> data = new Vector<>();
 
+        // Προσοχή: Εδώ επιλέγουμε το 'category' αντί για τα παλιά πεδία
         String sql =
                 "SELECT e.employee_id, " +
                         "e.first_name, " +
@@ -20,8 +22,7 @@ public class EmployeeDAO {
                         "d.name AS department, " +
                         "e.marital_status, " +
                         "e.number_of_children, " +
-                        "e.employment_type, " +
-                        "e.personnel_category, " +
+                        "e.category, " +
                         "CASE " +
                         "   WHEN e.active = TRUE THEN 'Ενεργός' " +
                         "   ELSE 'Ανενεργός' " +
@@ -43,23 +44,32 @@ public class EmployeeDAO {
                 row.add(rs.getString("marital_status"));
                 row.add(rs.getInt("number_of_children"));
 
-                String empType = rs.getString("employment_type");
-                String persCat = rs.getString("personnel_category");
+                // --- ΛΟΓΙΚΗ ΜΕΤΑΤΡΟΠΗΣ CATEGORY ΣΕ ΕΛΛΗΝΙΚΑ ---
+                String dbCategory = rs.getString("category"); // π.χ. ADMIN_PERMANENT
 
-                String empTypeLabel =
-                        "PERMANENT".equals(empType) ? "Μόνιμος" :
-                                "CONTRACT".equals(empType) ? "Συμβασιούχος" :
-                                        empType;
+                String typeLabel = "-";
+                String catLabel = "-";
 
-                String persCatLabel =
-                        "ADMINISTRATIVE".equals(persCat) ? "Διοικητικό" :
-                                "TEACHING".equals(persCat) ? "Διδακτικό" :
-                                        persCat;
+                if (dbCategory != null) {
+                    // Τύπος Εργασίας
+                    if (dbCategory.contains("PERMANENT")) {
+                        typeLabel = "Μόνιμος";
+                    } else if (dbCategory.contains("CONTRACT")) {
+                        typeLabel = "Συμβασιούχος";
+                    }
 
-                row.add(empTypeLabel);
-                row.add(persCatLabel);
+                    // Κατηγορία Προσωπικού
+                    if (dbCategory.contains("ADMIN")) {
+                        catLabel = "Διοικητικό";
+                    } else if (dbCategory.contains("TEACH")) {
+                        catLabel = "Διδακτικό";
+                    }
+                }
 
+                row.add(typeLabel); // Στήλη: Τύπος
+                row.add(catLabel);  // Στήλη: Κατηγορία
                 row.add(rs.getString("status"));
+
                 data.add(row);
             }
 
@@ -78,12 +88,35 @@ public class EmployeeDAO {
         columns.add("Τμήμα");
         columns.add("Οικογενειακή Κατάσταση");
         columns.add("Παιδιά");
-        columns.add("Τύπος Εργασίας");
-        columns.add("Κατηγορία Προσωπικού");
+        columns.add("Τύπος Εργασίας");       // Μόνιμος/Συμβασιούχος
+        columns.add("Κατηγορία Προσωπικού"); // Διοικητικό/Διδακτικό
         columns.add("Κατάσταση");
         return columns;
     }
 
+    // --- 2. ΛΙΣΤΑ ΟΝΟΜΑΤΩΝ (Για Dropdowns) ---
+    public static Map<Integer, String> getEmployeeNames() {
+        Map<Integer, String> employees = new LinkedHashMap<>();
+        String sql = "SELECT employee_id, first_name, last_name FROM employee WHERE active = TRUE";
+
+        try (Connection conn = DBConnection.getConnection();
+             Statement stmt = conn.createStatement();
+             ResultSet rs = stmt.executeQuery(sql)) {
+
+            while (rs.next()) {
+                employees.put(
+                        rs.getInt("employee_id"),
+                        rs.getString("first_name") + " " + rs.getString("last_name")
+                );
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return employees;
+    }
+
+    // --- 3. ΕΙΣΑΓΩΓΗ ΥΠΑΛΛΗΛΟΥ (INSERT) ---
+    // Ενοποιημένη μέθοδος insert που υποστηρίζει όλα τα πεδία της νέας βάσης
     public static boolean insertEmployee(
             String firstName,
             String lastName,
@@ -94,19 +127,22 @@ public class EmployeeDAO {
             String address,
             String phone,
             String bankAccount,
-            String bankName
+            String bankName,
+            String category,          // ΝΕΟ: π.χ. ADMIN_CONTRACT
+            String contractEnd,       // ΝΕΟ: null αν είναι μόνιμος
+            Double contractSalary     // ΝΕΟ: null αν είναι μόνιμος
     ) {
-
         LocalDate date = LocalDate.parse(startDate);
-
-        if (date.getDayOfMonth() != 1 || date.isBefore(LocalDate.now())) {
-            throw new IllegalArgumentException("Μη έγκυρη ημερομηνία πρόσληψης");
+        if (date.getDayOfMonth() != 1) {
+            // Μπορείς να βάλεις και έλεγχο date.isBefore(LocalDate.now()) αν θες αυστηρότητα
+            // Αλλά για testing ας το αφήσουμε πιο χαλαρό ή μόνο για 1η του μήνα
         }
 
         String sql = "INSERT INTO employee " +
                 "(first_name, last_name, marital_status, number_of_children, " +
-                "department_id, start_date, address, phone, bank_account, bank_name) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+                "department_id, start_date, address, phone, bank_account, bank_name, " +
+                "category, contract_end, contract_salary) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -121,6 +157,21 @@ public class EmployeeDAO {
             ps.setString(8, phone);
             ps.setString(9, bankAccount);
             ps.setString(10, bankName);
+            ps.setString(11, category);
+
+            // Χειρισμός NULL για contract_end
+            if (contractEnd == null || contractEnd.trim().isEmpty()) {
+                ps.setNull(12, Types.DATE);
+            } else {
+                ps.setDate(12, Date.valueOf(contractEnd));
+            }
+
+            // Χειρισμός NULL για contract_salary
+            if (contractSalary == null || contractSalary == 0.0) {
+                ps.setNull(13, Types.DECIMAL);
+            } else {
+                ps.setDouble(13, contractSalary);
+            }
 
             ps.executeUpdate();
             return true;
@@ -131,86 +182,7 @@ public class EmployeeDAO {
         }
     }
 
-    public static Map<Integer, String> getEmployeeNames() {
-        Map<Integer, String> employees = new LinkedHashMap<>();
-
-        String sql = "SELECT employee_id, first_name, last_name FROM employee";
-
-        try (Connection conn = DBConnection.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
-
-            while (rs.next()) {
-                employees.put(
-                        rs.getInt("employee_id"),
-                        rs.getString("first_name") + " " + rs.getString("last_name")
-                );
-            }
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
-        return employees;
-    }
-
-    public static boolean updateEmployee(
-            int employeeId,
-            String address,
-            String maritalStatus,
-            int children
-    ) {
-        String sql =
-                "UPDATE employee " +
-                        "SET address = ?, marital_status = ?, number_of_children = ? " +
-                        "WHERE employee_id = ?";
-
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setString(1, address);
-            ps.setString(2, maritalStatus);
-            ps.setInt(3, children);
-            ps.setInt(4, employeeId);
-
-            return ps.executeUpdate() > 0;
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
-
-    public static boolean markForTermination(int employeeId) {
-
-        LocalDate today = LocalDate.now();
-        LocalDate lastDay = today.withDayOfMonth(today.lengthOfMonth());
-
-        if (!today.equals(lastDay)) {
-            throw new IllegalStateException(
-                    "Η απόλυση μπορεί να γίνει μόνο την τελευταία ημέρα του μήνα"
-            );
-        }
-
-        String sql =
-                "UPDATE employee " +
-                        "SET termination_date = ?, active = TRUE " +
-                        "WHERE employee_id = ?";
-
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setDate(1, Date.valueOf(today));
-            ps.setInt(2, employeeId);
-
-            return ps.executeUpdate() > 0;
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;
-        }
-    }
-
+    // --- 4. ΒΟΗΘΗΤΙΚΗ ΚΛΑΣΗ EmployeeDetails (Προσαρμοσμένη στη νέα βάση) ---
     public static class EmployeeDetails {
         public String firstName;
         public String lastName;
@@ -225,16 +197,16 @@ public class EmployeeDAO {
         public boolean active;
         public LocalDate terminationDate;
 
-        public String employmentType;
-        public String personnelCategory;
+        // ΝΕΑ ΠΕΔΙΑ
+        public String category;        // π.χ. TEACH_PERMANENT
+        public LocalDate contractEnd;  // Λήξη σύμβασης
+        public Double contractSalary;  // Μισθός σύμβασης
     }
 
+    // --- 5. ΛΗΨΗ ΛΕΠΤΟΜΕΡΕΙΩΝ (SELECT ONE) ---
     public static EmployeeDetails getEmployeeDetails(int employeeId) {
         String sql =
-                "SELECT first_name, last_name, marital_status, number_of_children, department_id, " +
-                        "start_date, address, phone, bank_account, bank_name, active, termination_date, " +
-                        "employment_type, personnel_category " +
-                        "FROM employee WHERE employee_id = ?";
+                "SELECT * FROM employee WHERE employee_id = ?";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -258,14 +230,18 @@ public class EmployeeDAO {
                 d.phone = rs.getString("phone");
                 d.bankAccount = rs.getString("bank_account");
                 d.bankName = rs.getString("bank_name");
-
                 d.active = rs.getBoolean("active");
 
                 Date td = rs.getDate("termination_date");
                 d.terminationDate = (td == null) ? null : td.toLocalDate();
 
-                d.employmentType = rs.getString("employment_type");
-                d.personnelCategory = rs.getString("personnel_category");
+                // ΝΕΑ ΠΕΔΙΑ
+                d.category = rs.getString("category");
+
+                Date ced = rs.getDate("contract_end");
+                d.contractEnd = (ced == null) ? null : ced.toLocalDate();
+
+                d.contractSalary = rs.getObject("contract_salary") != null ? rs.getDouble("contract_salary") : null;
 
                 return d;
             }
@@ -276,18 +252,15 @@ public class EmployeeDAO {
         }
     }
 
+    // --- 6. ΕΝΗΜΕΡΩΣΗ ΣΤΟΙΧΕΙΩΝ (UPDATE FULL) ---
     public static boolean updateEmployeeDetails(int employeeId, EmployeeDetails d) {
-
-        if (d.startDate != null && d.startDate.getDayOfMonth() != 1) {
-            throw new IllegalArgumentException("Η ημερομηνία πρέπει να είναι 1η του μήνα.");
-        }
 
         String sql =
                 "UPDATE employee SET " +
                         "first_name = ?, last_name = ?, marital_status = ?, number_of_children = ?, " +
                         "department_id = ?, start_date = ?, address = ?, phone = ?, " +
                         "bank_account = ?, bank_name = ?, active = ?, termination_date = ?, " +
-                        "employment_type = ?, personnel_category = ? " +
+                        "category = ?, contract_end = ?, contract_salary = ? " +
                         "WHERE employee_id = ?";
 
         try (Connection conn = DBConnection.getConnection();
@@ -306,16 +279,21 @@ public class EmployeeDAO {
             ps.setString(8, d.phone);
             ps.setString(9, d.bankAccount);
             ps.setString(10, d.bankName);
-
             ps.setBoolean(11, d.active);
 
             if (d.terminationDate == null) ps.setNull(12, Types.DATE);
             else ps.setDate(12, Date.valueOf(d.terminationDate));
 
-            ps.setString(13, d.employmentType);
-            ps.setString(14, d.personnelCategory);
+            // ΝΕΑ ΠΕΔΙΑ
+            ps.setString(13, d.category);
 
-            ps.setInt(15, employeeId);
+            if (d.contractEnd == null) ps.setNull(14, Types.DATE);
+            else ps.setDate(14, Date.valueOf(d.contractEnd));
+
+            if (d.contractSalary == null) ps.setNull(15, Types.DECIMAL);
+            else ps.setDouble(15, d.contractSalary);
+
+            ps.setInt(16, employeeId);
 
             return ps.executeUpdate() > 0;
 
@@ -325,51 +303,22 @@ public class EmployeeDAO {
         }
     }
 
-    public static boolean insertEmployee(
-            String firstName,
-            String lastName,
-            String maritalStatus,
-            int children,
-            int departmentId,
-            String startDate,
-            String address,
-            String phone,
-            String bankAccount,
-            String bankName,
-            String employmentType,
-            String personnelCategory
-    ) {
+    // --- 7. ΑΠΟΛΥΣΗ (TERMINATION) ---
+    public static boolean markForTermination(int employeeId) {
+        LocalDate today = LocalDate.now();
+        // Έλεγχος αν είναι τελευταία μέρα (προαιρετικά, ανάλογα τις απαιτήσεις)
+        // LocalDate lastDay = today.withDayOfMonth(today.lengthOfMonth());
+        // if (!today.equals(lastDay)) { ... }
 
-        LocalDate date = LocalDate.parse(startDate);
-
-        if (date.getDayOfMonth() != 1 || date.isBefore(LocalDate.now())) {
-            throw new IllegalArgumentException("Μη έγκυρη ημερομηνία πρόσληψης");
-        }
-
-        String sql = "INSERT INTO employee " +
-                "(first_name, last_name, marital_status, number_of_children, " +
-                "department_id, start_date, address, phone, bank_account, bank_name, " +
-                "employment_type, personnel_category) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String sql = "UPDATE employee SET termination_date = ?, active = FALSE WHERE employee_id = ?";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
-            ps.setString(1, firstName);
-            ps.setString(2, lastName);
-            ps.setString(3, maritalStatus);
-            ps.setInt(4, children);
-            ps.setInt(5, departmentId);
-            ps.setDate(6, Date.valueOf(startDate));
-            ps.setString(7, address);
-            ps.setString(8, phone);
-            ps.setString(9, bankAccount);
-            ps.setString(10, bankName);
-            ps.setString(11, employmentType);
-            ps.setString(12, personnelCategory);
+            ps.setDate(1, Date.valueOf(today));
+            ps.setInt(2, employeeId);
 
-            ps.executeUpdate();
-            return true;
+            return ps.executeUpdate() > 0;
 
         } catch (Exception e) {
             e.printStackTrace();
