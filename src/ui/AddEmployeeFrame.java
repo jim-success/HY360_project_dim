@@ -28,6 +28,10 @@ public class AddEmployeeFrame extends JFrame {
         JTextField bankAccountField = new JTextField();
         JTextField bankNameField = new JTextField();
 
+
+        JComboBox<String> personnelCategoryBox = new JComboBox<>(new String[]{"ADMINISTRATIVE", "TEACHING"});
+        JComboBox<String> employmentTypeBox = new JComboBox<>(new String[]{"PERMANENT", "CONTRACT"});
+
         Map<Integer, String> departments = DepartmentDAO.getAllDepartments();
         for (String name : departments.values()) {
             departmentBox.addItem(name);
@@ -55,6 +59,13 @@ public class AddEmployeeFrame extends JFrame {
         panel.add(bankAccountField);
         panel.add(new JLabel("Τράπεζα"));
         panel.add(bankNameField);
+
+        panel.add(new JLabel("Κατηγορία Προσωπικού"));
+        panel.add(personnelCategoryBox);
+
+        panel.add(new JLabel("Τύπος Εργασίας"));
+        panel.add(employmentTypeBox);
+
 
         add(panel, BorderLayout.CENTER);
         add(saveBtn, BorderLayout.SOUTH);
@@ -100,8 +111,11 @@ public class AddEmployeeFrame extends JFrame {
                     addressField.getText(),
                     phoneField.getText(),
                     bankAccountField.getText(),
-                    bankNameField.getText()
+                    bankNameField.getText(),
+                    employmentTypeBox.getSelectedItem().toString(),
+                    personnelCategoryBox.getSelectedItem().toString()
             );
+
 
             if (success) {
                 JOptionPane.showMessageDialog(this, "Ο υπάλληλος προστέθηκε ✔");

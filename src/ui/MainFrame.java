@@ -10,7 +10,7 @@ public class MainFrame extends JFrame {
 
     public MainFrame() {
         setTitle("Payroll Application");
-        setSize(400, 350);
+        setSize(400, 380);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
@@ -25,10 +25,18 @@ public class MainFrame extends JFrame {
         JButton terminateEmployeeBtn = new JButton("Απόλυση / Συνταξιοδότηση");
         JButton salaryStatsBtn = new JButton("Στατιστικά Μισθών (Min / Max / Avg)");
 
+        // + ΝΕΟ ΚΟΥΜΠΙ
+        JButton payrollStatusByCategoryBtn = new JButton("Κατάσταση Μισθοδοσίας ανά Κατηγορία");
+
+        payrollStatusByCategoryBtn.addActionListener(e -> {
+            new PayrollStatusByCategoryFrame().setVisible(true);
+        });
+
 
         salaryStatsBtn.addActionListener(e -> {
-            new SalaryStatsByDepartmentFrame().setVisible(true);
+            new SalaryStatsByCategoryFrame().setVisible(true);
         });
+
 
 
         terminateEmployeeBtn.addActionListener(e -> {
@@ -63,7 +71,7 @@ public class MainFrame extends JFrame {
             new PayrollFrame().setVisible(true);
         });
 
-        JPanel panel = new JPanel(new GridLayout(9, 1, 10, 10));
+        JPanel panel = new JPanel(new GridLayout(10, 1, 10, 10));
 
         panel.add(viewEmployeesBtn);
         panel.add(addEmployeeBtn);
@@ -74,7 +82,7 @@ public class MainFrame extends JFrame {
         panel.add(salaryStatsBtn);        // ⬅️ ΝΕΟ ΚΟΥΜΠΙ
         panel.add(terminateEmployeeBtn);
         panel.add(statusLabel);
-
+        panel.add(payrollStatusByCategoryBtn);
 
 
 
