@@ -7,42 +7,59 @@ import java.time.LocalDate;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Vector;
+import java.math.BigDecimal;
 
 public class PayrollDAO {
 
     public static double calculateSalary(int employeeId) {
 
-        double salary = 1200.0; // βασικός μισθός (κανόνας άσκησης)
-
         String sql =
-                "SELECT marital_status, number_of_children " +
-                        "FROM employee " +
-                        "WHERE employee_id = ? AND active = TRUE";
+                "SELECT e.category, e.marital_status, e.number_of_children, e.contract_salary, " +
+                        "sp.base_salary, sp.allowance_per_child, sp.allowance_spouse, sp.research_allowance, sp.library_allowance " +
+                        "FROM employee e " +
+                        "JOIN salary_policy sp ON sp.category = e.category " +
+                        "WHERE e.employee_id = ? AND e.active = 1";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
 
             ps.setInt(1, employeeId);
-            ResultSet rs = ps.executeQuery();
 
-            if (rs.next()) {
+            try (ResultSet rs = ps.executeQuery()) {
+                if (!rs.next()) return 0.0;
 
-                String maritalStatus = rs.getString("marital_status");
+                String category = rs.getString("category");
+                String marital = rs.getString("marital_status");
                 int children = rs.getInt("number_of_children");
 
-                if ("married".equalsIgnoreCase(maritalStatus)) {
-                    salary += 100;
-                }
+                java.math.BigDecimal contractSalary = rs.getBigDecimal("contract_salary");
+                java.math.BigDecimal baseSalary = rs.getBigDecimal("base_salary");
 
-                salary += children * 50;
+                java.math.BigDecimal perChild = rs.getBigDecimal("allowance_per_child");
+                java.math.BigDecimal spouse = rs.getBigDecimal("allowance_spouse");
+                java.math.BigDecimal research = rs.getBigDecimal("research_allowance");
+                java.math.BigDecimal library = rs.getBigDecimal("library_allowance");
+
+                java.math.BigDecimal base;
+                if (category != null && category.endsWith("CONTRACT") && contractSalary != null) base = contractSalary;
+                else base = baseSalary;
+
+                java.math.BigDecimal total = base;
+
+                if ("married".equalsIgnoreCase(marital) && spouse != null) total = total.add(spouse);
+                if (perChild != null) total = total.add(perChild.multiply(new java.math.BigDecimal(children)));
+                if (research != null) total = total.add(research);
+                if (library != null) total = total.add(library);
+
+                return total.doubleValue();
             }
 
-        } catch (SQLException e) {
+        } catch (Exception e) {
             e.printStackTrace();
+            return 0.0;
         }
-
-        return salary;
     }
+
 
 
 
@@ -487,5 +504,131 @@ public class PayrollDAO {
 
         return data;
     }
+
+    public static class SalaryPolicyUpdate {
+        public int policyId;
+        public String category;
+        public BigDecimal baseSalary;
+        public BigDecimal allowancePerChild;
+        public BigDecimal allowanceSpouse;
+        public BigDecimal researchAllowance;
+        public BigDecimal libraryAllowance;
+    }
+
+    public static Vector<String> getSalaryPolicyColumns() {
+        Vector<String> cols = new Vector<>();
+        cols.add("policy_id");
+        cols.add("category");
+        cols.add("base_salary");
+        cols.add("allowance_per_child");
+        cols.add("allowance_spouse");
+        cols.add("research_allowance");
+        cols.add("library_allowance");
+        return cols;
+    }
+
+    public static Vector<Vector<Object>> getSalaryPolicyRows() {
+        Vector<Vector<Object>> data = new Vector<>();
+
+        String sql =
+                "SELECT policy_id, category, base_salary, allowance_per_child, allowance_spouse, research_allowance, library_allowance " +
+                        "FROM salary_policy ORDER BY category";
+
+        try (Connection conn = DBConnection.getConnection();
+             Statement st = conn.createStatement();
+             ResultSet rs = st.executeQuery(sql)) {
+
+            while (rs.next()) {
+                Vector<Object> row = new Vector<>();
+                row.add(rs.getInt("policy_id"));
+                row.add(rs.getString("category"));
+                row.add(rs.getBigDecimal("base_salary"));
+                row.add(rs.getBigDecimal("allowance_per_child"));
+                row.add(rs.getBigDecimal("allowance_spouse"));
+                row.add(rs.getBigDecimal("research_allowance"));
+                row.add(rs.getBigDecimal("library_allowance"));
+                data.add(row);
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
+        return data;
+    }
+
+    public static void updateSalaryPoliciesNoDecrease(Map<Integer, SalaryPolicyUpdate> updates) {
+
+        String selectSql =
+                "SELECT base_salary, allowance_per_child, allowance_spouse, research_allowance, library_allowance " +
+                        "FROM salary_policy WHERE policy_id = ?";
+
+        String updateSql =
+                "UPDATE salary_policy SET base_salary = ?, allowance_per_child = ?, allowance_spouse = ?, " +
+                        "research_allowance = ?, library_allowance = ? WHERE policy_id = ?";
+
+        try (Connection conn = DBConnection.getConnection()) {
+            conn.setAutoCommit(false);
+
+            try (PreparedStatement sel = conn.prepareStatement(selectSql);
+                 PreparedStatement upd = conn.prepareStatement(updateSql)) {
+
+                for (SalaryPolicyUpdate u : updates.values()) {
+
+                    sel.setInt(1, u.policyId);
+
+                    BigDecimal oldBase;
+                    BigDecimal oldPerChild;
+                    BigDecimal oldSpouse;
+                    BigDecimal oldResearch;
+                    BigDecimal oldLibrary;
+
+                    try (ResultSet rs = sel.executeQuery()) {
+                        if (!rs.next()) {
+                            throw new IllegalArgumentException("Δεν βρέθηκε policy_id: " + u.policyId);
+                        }
+                        oldBase = nz(rs.getBigDecimal("base_salary"));
+                        oldPerChild = nz(rs.getBigDecimal("allowance_per_child"));
+                        oldSpouse = nz(rs.getBigDecimal("allowance_spouse"));
+                        oldResearch = nz(rs.getBigDecimal("research_allowance"));
+                        oldLibrary = nz(rs.getBigDecimal("library_allowance"));
+                    }
+
+                    if (u.baseSalary.compareTo(oldBase) < 0) throw new IllegalArgumentException("Δεν επιτρέπεται μείωση base_salary για " + u.category);
+                    if (u.allowancePerChild.compareTo(oldPerChild) < 0) throw new IllegalArgumentException("Δεν επιτρέπεται μείωση allowance_per_child για " + u.category);
+                    if (u.allowanceSpouse.compareTo(oldSpouse) < 0) throw new IllegalArgumentException("Δεν επιτρέπεται μείωση allowance_spouse για " + u.category);
+                    if (u.researchAllowance.compareTo(oldResearch) < 0) throw new IllegalArgumentException("Δεν επιτρέπεται μείωση research_allowance για " + u.category);
+                    if (u.libraryAllowance.compareTo(oldLibrary) < 0) throw new IllegalArgumentException("Δεν επιτρέπεται μείωση library_allowance για " + u.category);
+
+                    upd.setBigDecimal(1, u.baseSalary);
+                    upd.setBigDecimal(2, u.allowancePerChild);
+                    upd.setBigDecimal(3, u.allowanceSpouse);
+                    upd.setBigDecimal(4, u.researchAllowance);
+                    upd.setBigDecimal(5, u.libraryAllowance);
+                    upd.setInt(6, u.policyId);
+
+                    upd.executeUpdate();
+                }
+
+                conn.commit();
+
+            } catch (Exception ex) {
+                conn.rollback();
+                throw ex;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+
+        } catch (RuntimeException re) {
+            throw re;
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static BigDecimal nz(BigDecimal b) {
+        return b == null ? BigDecimal.ZERO : b;
+    }
+
 
 }

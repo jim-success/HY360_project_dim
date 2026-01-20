@@ -41,7 +41,6 @@ public class PayrollStatusByCategoryFrame extends JFrame {
         top.add(loadBtn);
 
         add(top, BorderLayout.NORTH);
-
         // --- Πίνακας ---
         String[] columns = {"Κατηγορία", "Αριθμός Υπαλλήλων", "Συνολικό Κόστος"};
         model = new DefaultTableModel(columns, 0);
