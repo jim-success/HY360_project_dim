@@ -1,44 +1,42 @@
 package ui;
 
-import dao.PayrollDAO;
+import dao.SalaryPolicyDAO;
 
 import javax.swing.*;
 import javax.swing.table.DefaultTableModel;
 import java.awt.*;
 import java.math.BigDecimal;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Vector;
+import java.util.ArrayList;
+import java.util.List;
 
 public class SalaryPolicyFrame extends JFrame {
 
     private JTable table;
     private DefaultTableModel model;
 
-    // policy_id -> old values (base, per_child, spouse, research, library)
-    private final Map<Integer, BigDecimal[]> original = new HashMap<>();
-
     public SalaryPolicyFrame() {
         setTitle("Μεταβολή Βασικών Μισθών και Επιδομάτων");
         setSize(900, 320);
         setLocationRelativeTo(null);
 
-        Vector<String> cols = PayrollDAO.getSalaryPolicyColumns();
-        Vector<Vector<Object>> rows = PayrollDAO.getSalaryPolicyRows();
-
-        model = new DefaultTableModel(rows, cols) {
+        model = new DefaultTableModel(new Object[]{"Κατηγορία", "Βασικός Μισθός", "Research Allowance", "Library Allowance"}, 0) {
             @Override
-            public boolean isCellEditable(int row, int column) {
-                // 0: policy_id, 1: category (μη editable)
-                return column >= 2;
+            public boolean isCellEditable(int row, int col) {
+                if (col == 0) return false;
+
+                String category = getValueAt(row, 0).toString();
+
+                if (col == 2) return "TEACH_PERMANENT".equals(category);
+                if (col == 3) return "TEACH_CONTRACT".equals(category);
+
+                return col == 1; // base salary editable για όλους
             }
         };
 
         table = new JTable(model);
-        loadOriginalFromModel();
 
-        JButton saveBtn = new JButton("Αποθήκευση");
         JButton refreshBtn = new JButton("Ανανέωση");
+        JButton saveBtn = new JButton("Αποθήκευση");
 
         JPanel bottom = new JPanel(new FlowLayout(FlowLayout.RIGHT));
         bottom.add(refreshBtn);
@@ -47,74 +45,51 @@ public class SalaryPolicyFrame extends JFrame {
         add(new JScrollPane(table), BorderLayout.CENTER);
         add(bottom, BorderLayout.SOUTH);
 
-        refreshBtn.addActionListener(e -> refresh());
+        refreshBtn.addActionListener(e -> load());
+        saveBtn.addActionListener(e -> save());
 
-        saveBtn.addActionListener(e -> {
-            try {
-                Map<Integer, PayrollDAO.SalaryPolicyUpdate> updates = new HashMap<>();
-
-                for (int r = 0; r < model.getRowCount(); r++) {
-                    int policyId = Integer.parseInt(model.getValueAt(r, 0).toString());
-                    String category = model.getValueAt(r, 1).toString();
-
-                    BigDecimal base = parseBD(model.getValueAt(r, 2));
-                    BigDecimal perChild = parseBD(model.getValueAt(r, 3));
-                    BigDecimal spouse = parseBD(model.getValueAt(r, 4));
-                    BigDecimal research = parseBD(model.getValueAt(r, 5));
-                    BigDecimal library = parseBD(model.getValueAt(r, 6));
-
-                    // client-side no-decrease check
-                    BigDecimal[] old = original.get(policyId);
-                    if (old != null) {
-                        if (base.compareTo(old[0]) < 0) throw new IllegalArgumentException("Μείωση base_salary για " + category);
-                        if (perChild.compareTo(old[1]) < 0) throw new IllegalArgumentException("Μείωση allowance_per_child για " + category);
-                        if (spouse.compareTo(old[2]) < 0) throw new IllegalArgumentException("Μείωση allowance_spouse για " + category);
-                        if (research.compareTo(old[3]) < 0) throw new IllegalArgumentException("Μείωση research_allowance για " + category);
-                        if (library.compareTo(old[4]) < 0) throw new IllegalArgumentException("Μείωση library_allowance για " + category);
-                    }
-
-                    PayrollDAO.SalaryPolicyUpdate u = new PayrollDAO.SalaryPolicyUpdate();
-                    u.policyId = policyId;
-                    u.category = category;
-                    u.baseSalary = base;
-                    u.allowancePerChild = perChild;
-                    u.allowanceSpouse = spouse;
-                    u.researchAllowance = research;
-                    u.libraryAllowance = library;
-
-                    updates.put(policyId, u);
-                }
-
-                PayrollDAO.updateSalaryPoliciesNoDecrease(updates);
-
-                JOptionPane.showMessageDialog(this, "Οι αλλαγές αποθηκεύτηκαν ✔");
-                refresh();
-
-            } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, ex.getMessage(), "Σφάλμα", JOptionPane.ERROR_MESSAGE);
-            }
-        });
+        load();
     }
 
-    private void refresh() {
-        Vector<Vector<Object>> rows = PayrollDAO.getSalaryPolicyRows();
+    private void load() {
         model.setRowCount(0);
-        for (Vector<Object> r : rows) model.addRow(r);
-        original.clear();
-        loadOriginalFromModel();
+
+        for (SalaryPolicyDAO.PolicyRow r : SalaryPolicyDAO.getCurrentPolicyRows()) {
+            model.addRow(new Object[]{
+                    r.category,
+                    r.baseSalary,
+                    r.researchAllowance,
+                    r.libraryAllowance
+            });
+        }
     }
 
-    private void loadOriginalFromModel() {
-        for (int r = 0; r < model.getRowCount(); r++) {
-            int policyId = Integer.parseInt(model.getValueAt(r, 0).toString());
+    private void save() {
+        try {
+            if (table.isEditing()) {
+                table.getCellEditor().stopCellEditing();
+            }
 
-            BigDecimal base = parseBD(model.getValueAt(r, 2));
-            BigDecimal perChild = parseBD(model.getValueAt(r, 3));
-            BigDecimal spouse = parseBD(model.getValueAt(r, 4));
-            BigDecimal research = parseBD(model.getValueAt(r, 5));
-            BigDecimal library = parseBD(model.getValueAt(r, 6));
+            List<SalaryPolicyDAO.PolicyRow> rows = new ArrayList<>();
 
-            original.put(policyId, new BigDecimal[]{base, perChild, spouse, research, library});
+            for (int i = 0; i < model.getRowCount(); i++) {
+                SalaryPolicyDAO.PolicyRow r = new SalaryPolicyDAO.PolicyRow();
+                r.category = model.getValueAt(i, 0).toString();
+
+                r.baseSalary = parseBD(model.getValueAt(i, 1));
+                r.researchAllowance = parseBD(model.getValueAt(i, 2));
+                r.libraryAllowance = parseBD(model.getValueAt(i, 3));
+
+                rows.add(r);
+            }
+
+            SalaryPolicyDAO.updatePoliciesNoDecrease(rows);
+
+            JOptionPane.showMessageDialog(this, "Οι αλλαγές αποθηκεύτηκαν ✔");
+            load();
+
+        } catch (Exception ex) {
+            JOptionPane.showMessageDialog(this, ex.getMessage(), "Σφάλμα", JOptionPane.ERROR_MESSAGE);
         }
     }
 
