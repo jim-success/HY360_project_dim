@@ -1,7 +1,6 @@
 package dao;
 
 import db.DBConnection;
-
 import java.sql.*;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
@@ -10,26 +9,11 @@ import java.util.Vector;
 
 public class EmployeeDAO {
 
-    // --- 1. ΛΙΣΤΑ ΟΛΩΝ ΤΩΝ ΥΠΑΛΛΗΛΩΝ (Για τον πίνακα στο EmployeesFrame) ---
+    // --- 1. ΛΙΣΤΑ ΥΠΑΛΛΗΛΩΝ (Χρήση του VIEW) ---
     public static Vector<Vector<Object>> getAllEmployees() {
         Vector<Vector<Object>> data = new Vector<>();
-
-        // Προσοχή: Εδώ επιλέγουμε το 'category' αντί για τα παλιά πεδία
-        String sql =
-                "SELECT e.employee_id, " +
-                        "e.first_name, " +
-                        "e.last_name, " +
-                        "d.name AS department, " +
-                        "e.marital_status, " +
-                        "e.number_of_children, " +
-                        "e.category, " +
-                        "CASE " +
-                        "   WHEN e.active = TRUE THEN 'Ενεργός' " +
-                        "   ELSE 'Ανενεργός' " +
-                        "END AS status " +
-                        "FROM employee e " +
-                        "JOIN department d ON e.department_id = d.department_id " +
-                        "ORDER BY e.employee_id";
+        // Διαβάζουμε από το View που φτιάξαμε στη βάση
+        String sql = "SELECT * FROM view_employee_details ORDER BY employee_id";
 
         try (Connection conn = DBConnection.getConnection();
              Statement stmt = conn.createStatement();
@@ -40,289 +24,225 @@ public class EmployeeDAO {
                 row.add(rs.getInt("employee_id"));
                 row.add(rs.getString("first_name"));
                 row.add(rs.getString("last_name"));
-                row.add(rs.getString("department"));
+                row.add(rs.getString("department_name"));
                 row.add(rs.getString("marital_status"));
-                row.add(rs.getInt("number_of_children"));
+                row.add(rs.getInt("number_of_children")); // Από το COUNT(*) του View
 
-                // --- ΛΟΓΙΚΗ ΜΕΤΑΤΡΟΠΗΣ CATEGORY ΣΕ ΕΛΛΗΝΙΚΑ ---
-                String dbCategory = rs.getString("category"); // π.χ. ADMIN_PERMANENT
+                // Μετατροπή των SQL ENUM/Strings σε φιλικά Ελληνικά
+                String rawCat = rs.getString("category"); // π.χ. TEACH_PERMANENT
+                String type = (rawCat != null && rawCat.contains("PERMANENT")) ? "Μόνιμος" : "Συμβασιούχος";
+                String role = (rawCat != null && rawCat.contains("ADMIN")) ? "Διοικητικό" : "Διδακτικό";
 
-                String typeLabel = "-";
-                String catLabel = "-";
-
-                if (dbCategory != null) {
-                    // Τύπος Εργασίας
-                    if (dbCategory.contains("PERMANENT")) {
-                        typeLabel = "Μόνιμος";
-                    } else if (dbCategory.contains("CONTRACT")) {
-                        typeLabel = "Συμβασιούχος";
-                    }
-
-                    // Κατηγορία Προσωπικού
-                    if (dbCategory.contains("ADMIN")) {
-                        catLabel = "Διοικητικό";
-                    } else if (dbCategory.contains("TEACH")) {
-                        catLabel = "Διδακτικό";
-                    }
-                }
-
-                row.add(typeLabel); // Στήλη: Τύπος
-                row.add(catLabel);  // Στήλη: Κατηγορία
-                row.add(rs.getString("status"));
+                row.add(type);
+                row.add(role);
+                row.add(rs.getBoolean("active") ? "Ενεργός" : "Ανενεργός");
 
                 data.add(row);
             }
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-
+        } catch (SQLException e) { e.printStackTrace(); }
         return data;
     }
 
     public static Vector<String> getColumnNames() {
         Vector<String> columns = new Vector<>();
-        columns.add("ID");
-        columns.add("Όνομα");
-        columns.add("Επώνυμο");
-        columns.add("Τμήμα");
-        columns.add("Οικογενειακή Κατάσταση");
-        columns.add("Παιδιά");
-        columns.add("Τύπος Εργασίας");       // Μόνιμος/Συμβασιούχος
-        columns.add("Κατηγορία Προσωπικού"); // Διοικητικό/Διδακτικό
-        columns.add("Κατάσταση");
+        columns.add("ID"); columns.add("Όνομα"); columns.add("Επώνυμο");
+        columns.add("Τμήμα"); columns.add("Οικ. Κατάσταση"); columns.add("Παιδιά");
+        columns.add("Τύπος"); columns.add("Κατηγορία"); columns.add("Κατάσταση");
         return columns;
     }
 
-    // --- 2. ΛΙΣΤΑ ΟΝΟΜΑΤΩΝ (Για Dropdowns) ---
     public static Map<Integer, String> getEmployeeNames() {
         Map<Integer, String> employees = new LinkedHashMap<>();
         String sql = "SELECT employee_id, first_name, last_name FROM employee WHERE active = TRUE";
-
         try (Connection conn = DBConnection.getConnection();
              Statement stmt = conn.createStatement();
              ResultSet rs = stmt.executeQuery(sql)) {
-
             while (rs.next()) {
-                employees.put(
-                        rs.getInt("employee_id"),
-                        rs.getString("first_name") + " " + rs.getString("last_name")
-                );
+                employees.put(rs.getInt("employee_id"), rs.getString("first_name") + " " + rs.getString("last_name"));
             }
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+        } catch (SQLException e) { e.printStackTrace(); }
         return employees;
     }
 
-    // --- 3. ΕΙΣΑΓΩΓΗ ΥΠΑΛΛΗΛΟΥ (INSERT) ---
-    // Ενοποιημένη μέθοδος insert που υποστηρίζει όλα τα πεδία της νέας βάσης
-    public static boolean insertEmployee(
-            String firstName,
-            String lastName,
-            String maritalStatus,
-            int children,
-            int departmentId,
-            String startDate,
-            String address,
-            String phone,
-            String bankAccount,
-            String bankName,
-            String category,          // ΝΕΟ: π.χ. ADMIN_CONTRACT
-            String contractEnd,       // ΝΕΟ: null αν είναι μόνιμος
-            Double contractSalary     // ΝΕΟ: null αν είναι μόνιμος
-    ) {
-        LocalDate date = LocalDate.parse(startDate);
-        if (date.getDayOfMonth() != 1) {
-            // Μπορείς να βάλεις και έλεγχο date.isBefore(LocalDate.now()) αν θες αυστηρότητα
-            // Αλλά για testing ας το αφήσουμε πιο χαλαρό ή μόνο για 1η του μήνα
-        }
+    // --- 2. INSERT (Transaction σε πολλούς πίνακες) ---
+    public static boolean insertEmployee(String firstName, String lastName, String maritalStatus,
+                                         int childrenCount, int departmentId, String startDate,
+                                         String address, String phone, String bankAccount, String bankName,
+                                         String category, String contractEnd, Double salaryInput) {
+        Connection conn = null;
+        try {
+            conn = DBConnection.getConnection();
+            conn.setAutoCommit(false); // Έναρξη Transaction
 
-        String sql = "INSERT INTO employee " +
-                "(first_name, last_name, marital_status, number_of_children, " +
-                "department_id, start_date, address, phone, bank_account, bank_name, " +
-                "category, contract_end, contract_salary) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            // Α. Εισαγωγή στον πίνακα EMPLOYEE
+            String sqlEmp = "INSERT INTO employee (first_name, last_name, department_id, marital_status, start_date, address, phone, bank_account, bank_name) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+            PreparedStatement psEmp = conn.prepareStatement(sqlEmp, Statement.RETURN_GENERATED_KEYS);
+            psEmp.setString(1, firstName); psEmp.setString(2, lastName); psEmp.setInt(3, departmentId);
+            psEmp.setString(4, maritalStatus); psEmp.setDate(5, Date.valueOf(startDate));
+            psEmp.setString(6, address); psEmp.setString(7, phone);
+            psEmp.setString(8, bankAccount); psEmp.setString(9, bankName);
+            psEmp.executeUpdate();
 
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ResultSet rsKey = psEmp.getGeneratedKeys();
+            if (!rsKey.next()) throw new SQLException("Failed to create employee");
+            int empId = rsKey.getInt(1);
 
-            ps.setString(1, firstName);
-            ps.setString(2, lastName);
-            ps.setString(3, maritalStatus);
-            ps.setInt(4, children);
-            ps.setInt(5, departmentId);
-            ps.setDate(6, Date.valueOf(startDate));
-            ps.setString(7, address);
-            ps.setString(8, phone);
-            ps.setString(9, bankAccount);
-            ps.setString(10, bankName);
-            ps.setString(11, category);
-
-            // Χειρισμός NULL για contract_end
-            if (contractEnd == null || contractEnd.trim().isEmpty()) {
-                ps.setNull(12, Types.DATE);
-            } else {
-                ps.setDate(12, Date.valueOf(contractEnd));
+            // Β. Εισαγωγή Παιδιών (Dummy dates για να δουλεύει το count/επίδομα)
+            if (childrenCount > 0) {
+                String sqlChild = "INSERT INTO child (employee_id, birth_date) VALUES (?, ?)";
+                PreparedStatement psChild = conn.prepareStatement(sqlChild);
+                for (int i = 0; i < childrenCount; i++) {
+                    psChild.setInt(1, empId);
+                    psChild.setDate(2, Date.valueOf("2015-01-01")); // Default ανήλικο
+                    psChild.addBatch();
+                }
+                psChild.executeBatch();
             }
 
-            // Χειρισμός NULL για contract_salary
-            if (contractSalary == null || contractSalary == 0.0) {
-                ps.setNull(13, Types.DECIMAL);
-            } else {
-                ps.setDouble(13, contractSalary);
+            // Γ. Εισαγωγή σε Υπο-Πίνακες (Joined Table Strategy)
+            if (category.contains("PERMANENT")) {
+                double baseSalary = (salaryInput != null) ? salaryInput : 1000.0;
+                String sqlPerm = "INSERT INTO permanent (employee_id, base_salary, years_of_service) VALUES (?, ?, 0)";
+                PreparedStatement psPerm = conn.prepareStatement(sqlPerm);
+                psPerm.setInt(1, empId); psPerm.setDouble(2, baseSalary);
+                psPerm.executeUpdate();
+
+                if (category.contains("TEACH")) {
+                    String sqlTeach = "INSERT INTO teaching_permanent (employee_id, research_allowance) VALUES (?, 250.00)";
+                    PreparedStatement psTeach = conn.prepareStatement(sqlTeach);
+                    psTeach.setInt(1, empId); psTeach.executeUpdate();
+                }
+            } else { // CONTRACT
+                double monthlySalary = (salaryInput != null) ? salaryInput : 800.0;
+                String cEnd = (contractEnd != null && !contractEnd.isEmpty()) ? contractEnd : "2026-12-31";
+
+                String sqlContr = "INSERT INTO contract (employee_id, monthly_salary, contract_start, contract_end) VALUES (?, ?, ?, ?)";
+                PreparedStatement psContr = conn.prepareStatement(sqlContr);
+                psContr.setInt(1, empId); psContr.setDouble(2, monthlySalary);
+                psContr.setDate(3, Date.valueOf(startDate));
+                psContr.setDate(4, Date.valueOf(cEnd));
+                psContr.executeUpdate();
+
+                if (category.contains("TEACH")) {
+                    String sqlTeach = "INSERT INTO teaching_contract (employee_id, library_allowance) VALUES (?, 100.00)";
+                    PreparedStatement psTeach = conn.prepareStatement(sqlTeach);
+                    psTeach.setInt(1, empId); psTeach.executeUpdate();
+                }
             }
 
-            ps.executeUpdate();
+            conn.commit(); // Ολοκλήρωση
             return true;
 
         } catch (Exception e) {
+            if (conn != null) try { conn.rollback(); } catch (SQLException ex) {}
             e.printStackTrace();
             return false;
+        } finally {
+            if (conn != null) try { conn.setAutoCommit(true); conn.close(); } catch (SQLException ex) {}
         }
     }
 
-    // --- 4. ΒΟΗΘΗΤΙΚΗ ΚΛΑΣΗ EmployeeDetails (Προσαρμοσμένη στη νέα βάση) ---
+    // --- 3. LOAD & UPDATE DETAILS ---
     public static class EmployeeDetails {
-        public String firstName;
-        public String lastName;
-        public String maritalStatus;
-        public int numberOfChildren;
-        public int departmentId;
-        public LocalDate startDate;
-        public String address;
-        public String phone;
-        public String bankAccount;
-        public String bankName;
+        public String firstName, lastName, maritalStatus, address, phone, bankAccount, bankName, category;
+        public int numberOfChildren, departmentId;
+        public LocalDate startDate, terminationDate, contractEnd;
+        public Double salary;
         public boolean active;
-        public LocalDate terminationDate;
-
-        // ΝΕΑ ΠΕΔΙΑ
-        public String category;        // π.χ. TEACH_PERMANENT
-        public LocalDate contractEnd;  // Λήξη σύμβασης
-        public Double contractSalary;  // Μισθός σύμβασης
     }
 
-    // --- 5. ΛΗΨΗ ΛΕΠΤΟΜΕΡΕΙΩΝ (SELECT ONE) ---
-    public static EmployeeDetails getEmployeeDetails(int employeeId) {
+    public static EmployeeDetails getEmployeeDetails(int empId) {
+        // Τραβάμε τα πάντα με JOINs
         String sql =
-                "SELECT * FROM employee WHERE employee_id = ?";
+                "SELECT e.*, " +
+                        "  (SELECT COUNT(*) FROM child c WHERE c.employee_id = e.employee_id) as children_count, " +
+                        "  p.base_salary, c.monthly_salary, c.contract_end, " +
+                        "  tp.research_allowance, tc.library_allowance " +
+                        "FROM employee e " +
+                        "LEFT JOIN permanent p ON e.employee_id = p.employee_id " +
+                        "LEFT JOIN contract c ON e.employee_id = c.employee_id " +
+                        "LEFT JOIN teaching_permanent tp ON e.employee_id = tp.employee_id " +
+                        "LEFT JOIN teaching_contract tc ON e.employee_id = tc.employee_id " +
+                        "WHERE e.employee_id = ?";
 
         try (Connection conn = DBConnection.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, empId);
+            ResultSet rs = ps.executeQuery();
+            if (!rs.next()) return null;
 
-            ps.setInt(1, employeeId);
+            EmployeeDetails d = new EmployeeDetails();
+            d.firstName = rs.getString("first_name");
+            d.lastName = rs.getString("last_name");
+            d.maritalStatus = rs.getString("marital_status");
+            d.numberOfChildren = rs.getInt("children_count");
+            d.departmentId = rs.getInt("department_id");
+            d.address = rs.getString("address");
+            d.phone = rs.getString("phone");
+            d.bankAccount = rs.getString("bank_account");
+            d.bankName = rs.getString("bank_name");
+            d.active = rs.getBoolean("active");
 
-            try (ResultSet rs = ps.executeQuery()) {
-                if (!rs.next()) return null;
+            Date sd = rs.getDate("start_date"); d.startDate = (sd!=null)?sd.toLocalDate():null;
+            Date td = rs.getDate("termination_date"); d.terminationDate = (td!=null)?td.toLocalDate():null;
+            Date ced = rs.getDate("contract_end"); d.contractEnd = (ced!=null)?ced.toLocalDate():null;
 
-                EmployeeDetails d = new EmployeeDetails();
-                d.firstName = rs.getString("first_name");
-                d.lastName = rs.getString("last_name");
-                d.maritalStatus = rs.getString("marital_status");
-                d.numberOfChildren = rs.getInt("number_of_children");
-                d.departmentId = rs.getInt("department_id");
+            if (rs.getObject("base_salary") != null) {
+                d.salary = rs.getDouble("base_salary");
+                d.category = (rs.getObject("research_allowance") != null) ? "TEACH_PERMANENT" : "ADMIN_PERMANENT";
+            } else {
+                d.salary = rs.getDouble("monthly_salary");
+                d.category = (rs.getObject("library_allowance") != null) ? "TEACH_CONTRACT" : "ADMIN_CONTRACT";
+            }
+            return d;
+        } catch (Exception e) { e.printStackTrace(); return null; }
+    }
 
-                Date sd = rs.getDate("start_date");
-                d.startDate = (sd == null) ? null : sd.toLocalDate();
+    public static boolean updateEmployeeDetails(int empId, EmployeeDetails d) {
+        Connection conn = null;
+        try {
+            conn = DBConnection.getConnection();
+            conn.setAutoCommit(false);
 
-                d.address = rs.getString("address");
-                d.phone = rs.getString("phone");
-                d.bankAccount = rs.getString("bank_account");
-                d.bankName = rs.getString("bank_name");
-                d.active = rs.getBoolean("active");
-
-                Date td = rs.getDate("termination_date");
-                d.terminationDate = (td == null) ? null : td.toLocalDate();
-
-                // ΝΕΑ ΠΕΔΙΑ
-                d.category = rs.getString("category");
-
-                Date ced = rs.getDate("contract_end");
-                d.contractEnd = (ced == null) ? null : ced.toLocalDate();
-
-                d.contractSalary = rs.getObject("contract_salary") != null ? rs.getDouble("contract_salary") : null;
-
-                return d;
+            String sql1 = "UPDATE employee SET first_name=?, last_name=?, marital_status=?, department_id=?, address=?, phone=?, bank_account=?, bank_name=?, active=?, termination_date=? WHERE employee_id=?";
+            try (PreparedStatement ps = conn.prepareStatement(sql1)) {
+                ps.setString(1, d.firstName); ps.setString(2, d.lastName); ps.setString(3, d.maritalStatus);
+                ps.setInt(4, d.departmentId); ps.setString(5, d.address); ps.setString(6, d.phone);
+                ps.setString(7, d.bankAccount); ps.setString(8, d.bankName); ps.setBoolean(9, d.active);
+                ps.setDate(10, d.terminationDate != null ? Date.valueOf(d.terminationDate) : null);
+                ps.setInt(11, empId);
+                ps.executeUpdate();
             }
 
+            if (d.category.contains("PERMANENT")) {
+                String sql2 = "UPDATE permanent SET base_salary=? WHERE employee_id=?";
+                try (PreparedStatement ps = conn.prepareStatement(sql2)) {
+                    ps.setDouble(1, d.salary); ps.setInt(2, empId); ps.executeUpdate();
+                }
+            } else {
+                String sql3 = "UPDATE contract SET monthly_salary=?, contract_end=? WHERE employee_id=?";
+                try (PreparedStatement ps = conn.prepareStatement(sql3)) {
+                    ps.setDouble(1, d.salary);
+                    ps.setDate(2, d.contractEnd != null ? Date.valueOf(d.contractEnd) : null);
+                    ps.setInt(3, empId); ps.executeUpdate();
+                }
+            }
+            conn.commit();
+            return true;
         } catch (Exception e) {
-            e.printStackTrace();
-            return null;
-        }
-    }
-
-    // --- 6. ΕΝΗΜΕΡΩΣΗ ΣΤΟΙΧΕΙΩΝ (UPDATE FULL) ---
-    public static boolean updateEmployeeDetails(int employeeId, EmployeeDetails d) {
-
-        String sql =
-                "UPDATE employee SET " +
-                        "first_name = ?, last_name = ?, marital_status = ?, number_of_children = ?, " +
-                        "department_id = ?, start_date = ?, address = ?, phone = ?, " +
-                        "bank_account = ?, bank_name = ?, active = ?, termination_date = ?, " +
-                        "category = ?, contract_end = ?, contract_salary = ? " +
-                        "WHERE employee_id = ?";
-
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setString(1, d.firstName);
-            ps.setString(2, d.lastName);
-            ps.setString(3, d.maritalStatus);
-            ps.setInt(4, d.numberOfChildren);
-            ps.setInt(5, d.departmentId);
-
-            if (d.startDate == null) ps.setNull(6, Types.DATE);
-            else ps.setDate(6, Date.valueOf(d.startDate));
-
-            ps.setString(7, d.address);
-            ps.setString(8, d.phone);
-            ps.setString(9, d.bankAccount);
-            ps.setString(10, d.bankName);
-            ps.setBoolean(11, d.active);
-
-            if (d.terminationDate == null) ps.setNull(12, Types.DATE);
-            else ps.setDate(12, Date.valueOf(d.terminationDate));
-
-            // ΝΕΑ ΠΕΔΙΑ
-            ps.setString(13, d.category);
-
-            if (d.contractEnd == null) ps.setNull(14, Types.DATE);
-            else ps.setDate(14, Date.valueOf(d.contractEnd));
-
-            if (d.contractSalary == null) ps.setNull(15, Types.DECIMAL);
-            else ps.setDouble(15, d.contractSalary);
-
-            ps.setInt(16, employeeId);
-
-            return ps.executeUpdate() > 0;
-
-        } catch (Exception e) {
-            e.printStackTrace();
+            if(conn!=null) try{conn.rollback();}catch(SQLException ex){}
             return false;
+        } finally {
+            if(conn!=null) try{conn.setAutoCommit(true); conn.close();}catch(SQLException ex){}
         }
     }
 
-    // --- 7. ΑΠΟΛΥΣΗ (TERMINATION) ---
     public static boolean markForTermination(int employeeId) {
-        LocalDate today = LocalDate.now();
-        // Έλεγχος αν είναι τελευταία μέρα (προαιρετικά, ανάλογα τις απαιτήσεις)
-        // LocalDate lastDay = today.withDayOfMonth(today.lengthOfMonth());
-        // if (!today.equals(lastDay)) { ... }
-
         String sql = "UPDATE employee SET termination_date = ?, active = FALSE WHERE employee_id = ?";
-
-        try (Connection conn = DBConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setDate(1, Date.valueOf(today));
+        try (Connection conn = DBConnection.getConnection(); PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setDate(1, Date.valueOf(LocalDate.now()));
             ps.setInt(2, employeeId);
-
             return ps.executeUpdate() > 0;
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return false;
-        }
+        } catch (Exception e) { return false; }
     }
 }
