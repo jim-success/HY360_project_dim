@@ -24,10 +24,10 @@ public class MainFrame extends JFrame {
         JButton editEmployeeBtn = new JButton("Επεξεργασία Υπαλλήλου");
         JButton terminateEmployeeBtn = new JButton("Απόλυση / Συνταξιοδότηση");
         JButton salaryStatsBtn = new JButton("Στατιστικά Μισθών");
-        JButton payrollStatusByCategoryBtn = new JButton("Κατάσταση Μισθοδοσίας");
+        JButton payrollStatusByCategoryBtn = new JButton("Συνολικό ύψος μισθοδοσίας ανά κατηγορία προσωπικού");
         JButton sqlConsoleBtn = new JButton("SQL Console");
         JButton salaryPolicyBtn = new JButton("Μεταβολή Βασικών Μισθών και Επιδομάτων");
-        JButton payrollListByCategoryBtn = new JButton("Λίστα Μισθών ανά Κατηγορία");
+        JButton payrollListByCategoryBtn = new JButton("Κατάσταση μισθοδοσίας ανά κατηγορία προσωπικού");
         JButton avgIncreaseBtn = new JButton("Μέση Αύξηση Μισθών (Στατιστικά)");
         payrollListByCategoryBtn.addActionListener(e -> new PayrollListByCategoryFrame().setVisible(true));
 

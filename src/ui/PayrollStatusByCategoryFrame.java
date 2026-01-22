@@ -13,7 +13,7 @@ public class PayrollStatusByCategoryFrame extends JFrame {
     private DefaultTableModel model;
 
     public PayrollStatusByCategoryFrame() {
-        setTitle("Κατάσταση Μισθοδοσίας ανά Κατηγορία");
+        setTitle("Συνολικό ύψος μισθοδοσίας ανά κατηγορία προσωπικού");
         setSize(820, 400);
         setLocationRelativeTo(null);
         setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
