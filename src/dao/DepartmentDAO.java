@@ -1,13 +1,11 @@
 package dao;
 
 import db.DBConnection;
-
 import java.sql.*;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class DepartmentDAO {
-
     public static Map<Integer, String> getAllDepartments() {
         Map<Integer, String> departments = new LinkedHashMap<>();
 
@@ -23,11 +21,9 @@ public class DepartmentDAO {
                         rs.getString("name")
                 );
             }
-
         } catch (SQLException e) {
             e.printStackTrace();
         }
-
         return departments;
     }
 }

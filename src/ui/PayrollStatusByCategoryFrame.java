@@ -9,7 +9,6 @@ import java.time.LocalDate;
 import java.util.List;
 
 public class PayrollStatusByCategoryFrame extends JFrame {
-
     private JTable table;
     private DefaultTableModel model;
 
@@ -21,7 +20,6 @@ public class PayrollStatusByCategoryFrame extends JFrame {
 
         LocalDate now = LocalDate.now();
 
-        // --- Φίλτρα ---
         JComboBox<Integer> yearBox = new JComboBox<>();
         int currentYear = now.getYear();
         for (int y = currentYear - 5; y <= currentYear + 1; y++) yearBox.addItem(y);
@@ -41,29 +39,24 @@ public class PayrollStatusByCategoryFrame extends JFrame {
         top.add(loadBtn);
 
         add(top, BorderLayout.NORTH);
-        // --- Πίνακας ---
         String[] columns = {"Κατηγορία", "Αριθμός Υπαλλήλων", "Συνολικό Κόστος"};
         model = new DefaultTableModel(columns, 0);
         table = new JTable(model);
 
         add(new JScrollPane(table), BorderLayout.CENTER);
 
-        // --- Logic Κουμπιού ---
         loadBtn.addActionListener(e -> {
             int year = (int) yearBox.getSelectedItem();
             int month = (int) monthBox.getSelectedItem();
             updateTable(year, month);
         });
 
-        // Φόρτωση αρχικών δεδομένων (τρέχων μήνας)
         updateTable(currentYear, now.getMonthValue());
     }
 
     private void updateTable(int year, int month) {
-        // Καθαρισμός του πίνακα
         model.setRowCount(0);
 
-        // Λήψη δεδομένων από τη βάση μέσω του DAO
         List<StatisticsDAO.CategoryTotalStats> stats = StatisticsDAO.getPayrollStatusByCategory(year, month);
 
         if (stats.isEmpty()) {
@@ -76,7 +69,7 @@ public class PayrollStatusByCategoryFrame extends JFrame {
             model.addRow(new Object[]{
                     s.category,
                     s.employeeCount,
-                    String.format("%.2f €", s.totalCost)
+                    String.format("%.2f ευρώ", s.totalCost)
             });
         }
     }

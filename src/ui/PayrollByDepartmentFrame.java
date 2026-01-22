@@ -6,7 +6,6 @@ import javax.swing.*;
 import java.awt.*;
 
 public class PayrollByDepartmentFrame extends JFrame {
-
     public PayrollByDepartmentFrame() {
         setTitle("Μισθοδοσία ανά Τμήμα");
         setSize(500, 300);

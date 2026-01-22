@@ -1,4 +1,4 @@
-package ui;
+/*package ui;
 
 import dao.PayrollDAO;
 
@@ -6,7 +6,6 @@ import javax.swing.*;
 import java.awt.*;
 
 public class SalaryStatsByDepartmentFrame extends JFrame {
-
     public SalaryStatsByDepartmentFrame() {
         setTitle("Στατιστικά Μισθών ανά Τμήμα");
         setSize(600, 300);
@@ -20,3 +19,4 @@ public class SalaryStatsByDepartmentFrame extends JFrame {
         add(new JScrollPane(table), BorderLayout.CENTER);
     }
 }
+*/

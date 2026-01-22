@@ -1,19 +1,17 @@
 package dao;
 
 import db.DBConnection;
-
 import java.math.BigDecimal;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 
 public class SalaryPolicyDAO {
-
     public static class PolicyRow {
-        public String category;                 // ADMIN_PERMANENT / TEACH_PERMANENT / ADMIN_CONTRACT / TEACH_CONTRACT
-        public BigDecimal baseSalary;           // permanent.base_salary or contract.monthly_salary (ανά κατηγορία)
-        public BigDecimal researchAllowance;    // μόνο TEACH_PERMANENT
-        public BigDecimal libraryAllowance;     // μόνο TEACH_CONTRACT
+        public String category;
+        public BigDecimal baseSalary;
+        public BigDecimal researchAllowance;
+        public BigDecimal libraryAllowance;
     }
 
     private static BigDecimal nz(BigDecimal b) {
@@ -142,7 +140,6 @@ public class SalaryPolicyDAO {
     }
 
     public static void updatePoliciesNoDecrease(List<PolicyRow> newRows) {
-        // παίρνουμε τις τρέχουσες MAX τιμές (ώστε να μην μειώσουμε ΚΑΝΕΝΑΝ)
         List<PolicyRow> oldRows = getCurrentPolicyRows();
 
         for (PolicyRow n : newRows) {
@@ -183,7 +180,6 @@ public class SalaryPolicyDAO {
 
     private static void applyUpdate(Connection conn, PolicyRow n) throws SQLException {
         if ("ADMIN_PERMANENT".equals(n.category)) {
-            // όλοι οι permanent που ΔΕΝ είναι teaching_permanent
             try (PreparedStatement ps = conn.prepareStatement(
                     "UPDATE permanent p " +
                             "LEFT JOIN teaching_permanent tp ON tp.employee_id = p.employee_id " +
@@ -196,7 +192,6 @@ public class SalaryPolicyDAO {
         }
 
         if ("TEACH_PERMANENT".equals(n.category)) {
-            // permanent base_salary για teaching_permanent
             try (PreparedStatement ps = conn.prepareStatement(
                     "UPDATE permanent p " +
                             "JOIN teaching_permanent tp ON tp.employee_id = p.employee_id " +
@@ -206,7 +201,6 @@ public class SalaryPolicyDAO {
                 ps.executeUpdate();
             }
 
-            // research_allowance
             try (PreparedStatement ps = conn.prepareStatement(
                     "UPDATE teaching_permanent SET research_allowance = ?"
             )) {
@@ -216,7 +210,6 @@ public class SalaryPolicyDAO {
         }
 
         if ("ADMIN_CONTRACT".equals(n.category)) {
-            // όλοι οι contract που ΔΕΝ είναι teaching_contract
             try (PreparedStatement ps = conn.prepareStatement(
                     "UPDATE contract c " +
                             "LEFT JOIN teaching_contract tc ON tc.employee_id = c.employee_id " +
@@ -229,7 +222,6 @@ public class SalaryPolicyDAO {
         }
 
         if ("TEACH_CONTRACT".equals(n.category)) {
-            // contract monthly_salary για teaching_contract
             try (PreparedStatement ps = conn.prepareStatement(
                     "UPDATE contract c " +
                             "JOIN teaching_contract tc ON tc.employee_id = c.employee_id " +
@@ -239,7 +231,6 @@ public class SalaryPolicyDAO {
                 ps.executeUpdate();
             }
 
-            // library_allowance
             try (PreparedStatement ps = conn.prepareStatement(
                     "UPDATE teaching_contract SET library_allowance = ?"
             )) {
