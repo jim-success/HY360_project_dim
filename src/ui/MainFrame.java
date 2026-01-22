@@ -27,6 +27,9 @@ public class MainFrame extends JFrame {
         JButton payrollStatusByCategoryBtn = new JButton("Κατάσταση Μισθοδοσίας");
         JButton sqlConsoleBtn = new JButton("SQL Console");
         JButton salaryPolicyBtn = new JButton("Μεταβολή Βασικών Μισθών και Επιδομάτων");
+        JButton payrollListByCategoryBtn = new JButton("Λίστα Μισθών ανά Κατηγορία");
+        payrollListByCategoryBtn.addActionListener(e -> new PayrollListByCategoryFrame().setVisible(true));
+
         salaryPolicyBtn.addActionListener(e -> new SalaryPolicyFrame().setVisible(true));
 
         viewEmployeesBtn.addActionListener(e -> new EmployeesFrame().setVisible(true));
@@ -47,6 +50,7 @@ public class MainFrame extends JFrame {
         buttonsPanel.add(addEmployeeBtn);
         buttonsPanel.add(editEmployeeBtn);
         buttonsPanel.add(payrollBtn);
+        buttonsPanel.add(payrollListByCategoryBtn);
         buttonsPanel.add(payrollHistoryBtn);
         buttonsPanel.add(reportDeptBtn);
         buttonsPanel.add(salaryStatsBtn);

@@ -9,113 +9,141 @@ import java.time.LocalDate;
 import java.util.Map;
 
 public class AddEmployeeFrame extends JFrame {
-    private JTextField contractEndField, contractSalaryField;
-    private JComboBox<String> employmentTypeBox;
 
     public AddEmployeeFrame() {
         setTitle("Προσθήκη Υπαλλήλου");
-        setSize(450, 600);
+        setSize(420, 520);
         setLocationRelativeTo(null);
-        setDefaultCloseOperation(JFrame.DISPOSE_ON_CLOSE);
 
-        JPanel panel = new JPanel(new GridLayout(0, 2, 10, 10));
+        JPanel panel = new JPanel(new GridLayout(0, 2, 5, 5));
         panel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
 
         JTextField firstNameField = new JTextField();
         JTextField lastNameField = new JTextField();
         JComboBox<String> maritalBox = new JComboBox<>(new String[]{"single", "married"});
         JTextField childrenField = new JTextField("0");
-
         JComboBox<String> departmentBox = new JComboBox<>();
-        Map<Integer, String> departments = DepartmentDAO.getAllDepartments();
-        for (String name : departments.values()) departmentBox.addItem(name);
-
-        JTextField startDateField = new JTextField(LocalDate.now().toString());
+        JTextField startDateField = new JTextField("2024-01-01");
         JTextField addressField = new JTextField();
         JTextField phoneField = new JTextField();
         JTextField bankAccountField = new JTextField();
         JTextField bankNameField = new JTextField();
 
         JComboBox<String> personnelCategoryBox = new JComboBox<>(new String[]{"ADMINISTRATIVE", "TEACHING"});
-        employmentTypeBox = new JComboBox<>(new String[]{"PERMANENT", "CONTRACT"});
+        JComboBox<String> employmentTypeBox = new JComboBox<>(new String[]{"PERMANENT", "CONTRACT"});
 
-        contractEndField = new JTextField();
-        contractSalaryField = new JTextField();
-        contractEndField.setEnabled(false);
-        contractSalaryField.setEnabled(false);
-        contractEndField.setBackground(Color.LIGHT_GRAY);
-        contractSalaryField.setBackground(Color.LIGHT_GRAY);
+        JTextField salaryField = new JTextField();
+        JTextField contractEndDateField = new JTextField("2026-12-31");
+        contractEndDateField.setEnabled(false);
 
         employmentTypeBox.addActionListener(e -> {
-            boolean isContract = "CONTRACT".equals(employmentTypeBox.getSelectedItem());
-            contractEndField.setEnabled(isContract);
-            contractSalaryField.setEnabled(isContract);
-            Color bg = isContract ? Color.WHITE : Color.LIGHT_GRAY;
-            contractEndField.setBackground(bg);
-            contractSalaryField.setBackground(bg);
+            boolean isContract = "CONTRACT".equals(employmentTypeBox.getSelectedItem().toString());
+            contractEndDateField.setEnabled(isContract);
+            if (!isContract) contractEndDateField.setText("");
+            else if (contractEndDateField.getText().trim().isEmpty()) contractEndDateField.setText("2026-12-31");
         });
+
+        Map<Integer, String> departments = DepartmentDAO.getAllDepartments();
+        for (String name : departments.values()) {
+            departmentBox.addItem(name);
+        }
 
         JButton saveBtn = new JButton("Αποθήκευση");
 
-        panel.add(new JLabel("Όνομα:"));
+        panel.add(new JLabel("Όνομα"));
         panel.add(firstNameField);
-        panel.add(new JLabel("Επώνυμο:"));
+        panel.add(new JLabel("Επώνυμο"));
         panel.add(lastNameField);
-        panel.add(new JLabel("Οικ. Κατάσταση:"));
+        panel.add(new JLabel("Οικ. Κατάσταση"));
         panel.add(maritalBox);
-        panel.add(new JLabel("Παιδιά:"));
+        panel.add(new JLabel("Παιδιά (πλήθος)"));
         panel.add(childrenField);
-        panel.add(new JLabel("Τμήμα:"));
+        panel.add(new JLabel("Τμήμα"));
         panel.add(departmentBox);
-        panel.add(new JLabel("Ημ. Πρόσληψης:"));
+        panel.add(new JLabel("Ημ. Έναρξης (YYYY-MM-DD)"));
         panel.add(startDateField);
-        panel.add(new JLabel("Διεύθυνση:"));
+        panel.add(new JLabel("Διεύθυνση"));
         panel.add(addressField);
-        panel.add(new JLabel("Τηλέφωνο:"));
+        panel.add(new JLabel("Τηλέφωνο"));
         panel.add(phoneField);
-        panel.add(new JLabel("IBAN:"));
+        panel.add(new JLabel("IBAN"));
         panel.add(bankAccountField);
-        panel.add(new JLabel("Τράπεζα:"));
+        panel.add(new JLabel("Τράπεζα"));
         panel.add(bankNameField);
-        panel.add(new JLabel("Κατηγορία:"));
+
+        panel.add(new JLabel("Κατηγορία Προσωπικού"));
         panel.add(personnelCategoryBox);
-        panel.add(new JLabel("Τύπος:"));
+
+        panel.add(new JLabel("Τύπος Εργασίας"));
         panel.add(employmentTypeBox);
-        panel.add(new JLabel("Λήξη Σύμβασης:"));
-        panel.add(contractEndField);
-        panel.add(new JLabel("Μισθός (Βασικός/Σύμβασης):"));
-        panel.add(contractSalaryField);
+
+        panel.add(new JLabel("Μισθός (optional)"));
+        panel.add(salaryField);
+
+        panel.add(new JLabel("Λήξη Σύμβασης (YYYY-MM-DD)"));
+        panel.add(contractEndDateField);
 
         add(panel, BorderLayout.CENTER);
         add(saveBtn, BorderLayout.SOUTH);
 
         saveBtn.addActionListener(e -> {
             try {
-                int deptId = (int) departments.keySet().toArray()[departmentBox.getSelectedIndex()];
-                String prefix = "ADMINISTRATIVE".equals(personnelCategoryBox.getSelectedItem()) ? "ADMIN" : "TEACH";
-                String category = prefix + "_" + employmentTypeBox.getSelectedItem();
+                int deptIndex = departmentBox.getSelectedIndex();
+                int deptId = (int) departments.keySet().toArray()[deptIndex];
 
-                String cEnd = null;
-                Double salary = null;
-                if (!contractSalaryField.getText().trim().isEmpty())
-                    salary = Double.parseDouble(contractSalaryField.getText().trim());
-                if ("CONTRACT".equals(employmentTypeBox.getSelectedItem())) {
-                    cEnd = contractEndField.getText().trim();
-                    if (cEnd.isEmpty() || salary == null) throw new Exception("Required fields missing");
+                LocalDate startDate = LocalDate.parse(startDateField.getText().trim());
+
+                if (startDate.isBefore(LocalDate.now())) {
+                    JOptionPane.showMessageDialog(this, "Η πρόσληψη δεν μπορεί να είναι αναδρομική.", "Σφάλμα", JOptionPane.ERROR_MESSAGE);
+                    return;
                 }
 
+                if (startDate.getDayOfMonth() != 1) {
+                    JOptionPane.showMessageDialog(this, "Η πρόσληψη πρέπει να γίνεται από την 1η ημέρα του μήνα.", "Σφάλμα", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+
+                String empType = employmentTypeBox.getSelectedItem().toString();
+                String pcat = personnelCategoryBox.getSelectedItem().toString();
+
+                String prefix = "ADMINISTRATIVE".equals(pcat) ? "ADMIN" : "TEACH";
+                String category = prefix + "_" + empType;
+
+                String contractEnd = contractEndDateField.getText().trim();
+                if ("CONTRACT".equals(empType) && contractEnd.isEmpty()) {
+                    JOptionPane.showMessageDialog(this, "Για συμβασιούχο πρέπει να βάλεις ημερομηνία λήξης σύμβασης.", "Σφάλμα", JOptionPane.ERROR_MESSAGE);
+                    return;
+                }
+
+                Double salaryInput = null;
+                String salaryText = salaryField.getText().trim();
+                if (!salaryText.isEmpty()) salaryInput = Double.parseDouble(salaryText);
+
                 boolean success = EmployeeDAO.insertEmployee(
-                        firstNameField.getText(), lastNameField.getText(), maritalBox.getSelectedItem().toString(),
-                        Integer.parseInt(childrenField.getText()), deptId, startDateField.getText(),
-                        addressField.getText(), phoneField.getText(), bankAccountField.getText(), bankNameField.getText(),
-                        category, cEnd, salary
+                        firstNameField.getText(),
+                        lastNameField.getText(),
+                        maritalBox.getSelectedItem().toString(),
+                        Integer.parseInt(childrenField.getText()),
+                        deptId,
+                        startDateField.getText().trim(),
+                        addressField.getText(),
+                        phoneField.getText(),
+                        bankAccountField.getText(),
+                        bankNameField.getText(),
+                        category,
+                        contractEnd,
+                        salaryInput
                 );
+
                 if (success) {
-                    JOptionPane.showMessageDialog(this, "Επιτυχία!");
+                    JOptionPane.showMessageDialog(this, "Ο υπάλληλος προστέθηκε");
                     dispose();
-                } else JOptionPane.showMessageDialog(this, "Σφάλμα.");
+                } else {
+                    JOptionPane.showMessageDialog(this, "Σφάλμα");
+                }
+
             } catch (Exception ex) {
-                JOptionPane.showMessageDialog(this, "Λάθος δεδομένα.");
+                JOptionPane.showMessageDialog(this, "Λάθος δεδομένα", "Σφάλμα", JOptionPane.ERROR_MESSAGE);
             }
         });
     }
