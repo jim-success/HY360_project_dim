@@ -117,11 +117,25 @@ public class EmployeeDAO {
                 psPerm.executeUpdate();
 
                 if (category.contains("TEACH")) {
-                    String sqlTeach = "INSERT INTO teaching_permanent (employee_id, research_allowance) VALUES (?, 250.00)";
-                    PreparedStatement psTeach = conn.prepareStatement(sqlTeach);
-                    psTeach.setInt(1, empId);
-                    psTeach.executeUpdate();
+
+                    double researchAllowance = 250.0;
+
+                    try (Statement st = conn.createStatement();
+                         ResultSet rs = st.executeQuery("SELECT COALESCE(MAX(research_allowance), 0) AS val FROM teaching_permanent")) {
+                        if (rs.next()) {
+                            double v = rs.getDouble("val");
+                            if (v > 0) researchAllowance = v;
+                        }
+                    }
+
+                    String sqlTeach = "INSERT INTO teaching_permanent (employee_id, research_allowance) VALUES (?, ?)";
+                    try (PreparedStatement psTeach = conn.prepareStatement(sqlTeach)) {
+                        psTeach.setInt(1, empId);
+                        psTeach.setDouble(2, researchAllowance);
+                        psTeach.executeUpdate();
+                    }
                 }
+
             } else {
                 double monthlySalary = (salaryInput != null) ? salaryInput : 800.0;
                 String cEnd = (contractEnd != null && !contractEnd.isEmpty()) ? contractEnd : "2026-12-31";
@@ -135,11 +149,25 @@ public class EmployeeDAO {
                 psContr.executeUpdate();
 
                 if (category.contains("TEACH")) {
-                    String sqlTeach = "INSERT INTO teaching_contract (employee_id, library_allowance) VALUES (?, 100.00)";
-                    PreparedStatement psTeach = conn.prepareStatement(sqlTeach);
-                    psTeach.setInt(1, empId);
-                    psTeach.executeUpdate();
+
+                    double libraryAllowance = 100.0;
+
+                    try (Statement st = conn.createStatement();
+                         ResultSet rs = st.executeQuery("SELECT COALESCE(MAX(library_allowance), 0) AS val FROM teaching_contract")) {
+                        if (rs.next()) {
+                            double v = rs.getDouble("val");
+                            if (v > 0) libraryAllowance = v;
+                        }
+                    }
+
+                    String sqlTeach = "INSERT INTO teaching_contract (employee_id, library_allowance) VALUES (?, ?)";
+                    try (PreparedStatement psTeach = conn.prepareStatement(sqlTeach)) {
+                        psTeach.setInt(1, empId);
+                        psTeach.setDouble(2, libraryAllowance);
+                        psTeach.executeUpdate();
+                    }
                 }
+
             }
             conn.commit();
             return true;
