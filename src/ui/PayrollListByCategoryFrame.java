@@ -35,7 +35,7 @@ public class PayrollListByCategoryFrame extends JFrame {
             String category = categoryBox.getSelectedItem().toString();
 
             table.setModel(new DefaultTableModel(
-                    PayrollListDAO.getEmployeesWithSalaryByExactCategory(category),
+                    PayrollListDAO.getEmployeesSalaryBreakdownByExactCategory(category),
                     PayrollListDAO.getColumns()
             ) {
                 @Override
@@ -44,6 +44,8 @@ public class PayrollListByCategoryFrame extends JFrame {
                 }
             });
         };
+
+
 
 
         showBtn.addActionListener(e -> load.run());

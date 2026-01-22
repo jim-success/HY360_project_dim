@@ -11,23 +11,40 @@ public class PayrollListDAO {
         Vector<String> cols = new Vector<>();
         cols.add("ID");
         cols.add("Υπάλληλος");
-        cols.add("Υποκατηγορία");
-        cols.add("Μισθός (ευρώ)");
+        cols.add("Κατηγορία");
+        cols.add("Βασικός (€)");
+        cols.add("Επίδομα (€)");
+        cols.add("Σύνολο (€)");
         return cols;
     }
 
-    public static Vector<Vector<Object>> getEmployeesWithSalaryByExactCategory(String category) {
+    public static Vector<Vector<Object>> getEmployeesSalaryBreakdownByExactCategory(String category) {
         Vector<Vector<Object>> data = new Vector<>();
 
         String sql =
                 "SELECT v.employee_id, v.first_name, v.last_name, v.category, " +
                         "CASE " +
-                        "  WHEN v.category = 'TEACH_PERMANENT' THEN COALESCE(p.base_salary,0) + COALESCE(tp.research_allowance,0) " +
-                        "  WHEN v.category = 'ADMIN_PERMANENT' THEN COALESCE(p.base_salary,0) " +
-                        "  WHEN v.category = 'TEACH_CONTRACT' THEN COALESCE(c.monthly_salary,0) + COALESCE(tc.library_allowance,0) " +
-                        "  WHEN v.category = 'ADMIN_CONTRACT' THEN COALESCE(c.monthly_salary,0) " +
+                        "  WHEN v.category IN ('ADMIN_PERMANENT','TEACH_PERMANENT') THEN COALESCE(p.base_salary,0) " +
+                        "  WHEN v.category IN ('ADMIN_CONTRACT','TEACH_CONTRACT') THEN COALESCE(c.monthly_salary,0) " +
                         "  ELSE 0 " +
-                        "END AS salary " +
+                        "END AS base_salary, " +
+                        "CASE " +
+                        "  WHEN v.category = 'TEACH_PERMANENT' THEN COALESCE(tp.research_allowance,0) " +
+                        "  WHEN v.category = 'TEACH_CONTRACT' THEN COALESCE(tc.library_allowance,0) " +
+                        "  ELSE 0 " +
+                        "END AS allowance, " +
+                        "(" +
+                        "CASE " +
+                        "  WHEN v.category IN ('ADMIN_PERMANENT','TEACH_PERMANENT') THEN COALESCE(p.base_salary,0) " +
+                        "  WHEN v.category IN ('ADMIN_CONTRACT','TEACH_CONTRACT') THEN COALESCE(c.monthly_salary,0) " +
+                        "  ELSE 0 " +
+                        "END + " +
+                        "CASE " +
+                        "  WHEN v.category = 'TEACH_PERMANENT' THEN COALESCE(tp.research_allowance,0) " +
+                        "  WHEN v.category = 'TEACH_CONTRACT' THEN COALESCE(tc.library_allowance,0) " +
+                        "  ELSE 0 " +
+                        "END" +
+                        ") AS total " +
                         "FROM view_employee_details v " +
                         "LEFT JOIN permanent p ON p.employee_id = v.employee_id " +
                         "LEFT JOIN `contract` c ON c.employee_id = v.employee_id " +
@@ -46,13 +63,15 @@ public class PayrollListDAO {
                     int id = rs.getInt("employee_id");
                     String fullName = rs.getString("first_name") + " " + rs.getString("last_name");
                     String cat = rs.getString("category");
-                    BigDecimal salary = rs.getBigDecimal("salary");
 
                     Vector<Object> row = new Vector<>();
                     row.add(id);
                     row.add(fullName);
                     row.add(cat);
-                    row.add(salary);
+                    row.add(rs.getBigDecimal("base_salary"));
+                    row.add(rs.getBigDecimal("allowance"));
+                    row.add(rs.getBigDecimal("total"));
+
                     data.add(row);
                 }
             }
@@ -63,5 +82,7 @@ public class PayrollListDAO {
 
         return data;
     }
+
+
 
 }
