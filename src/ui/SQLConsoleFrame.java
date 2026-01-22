@@ -21,7 +21,7 @@ public class SQLConsoleFrame extends JFrame {
         queryArea.setText("SELECT * FROM employee LIMIT 50;");
         queryArea.setFont(new Font(Font.MONOSPACED, Font.PLAIN, 12));
 
-        JButton execBtn = new JButton("Execute (SELECT only)");
+        JButton execBtn = new JButton("Execute");
         JButton clearBtn = new JButton("Clear");
         JButton sampleBtn = new JButton("Sample");
 
@@ -49,11 +49,10 @@ public class SQLConsoleFrame extends JFrame {
         clearBtn.addActionListener(e -> queryArea.setText(""));
 
         sampleBtn.addActionListener(e -> queryArea.setText(
-                "SELECT e.employee_id, e.first_name, e.last_name, e.category, d.name AS department\n" +
+                "SELECT e.last_name, e.first_name, d.name AS department\n" +
                         "FROM employee e\n" +
-                        "JOIN department d ON d.department_id = e.department_id\n" +
-                        "ORDER BY e.employee_id\n" +
-                        "LIMIT 50;"
+                        "JOIN department d ON e.department_id = d.department_id\n" +
+                        "ORDER BY d.name, e.last_name;"
         ));
 
         execBtn.addActionListener(e -> executeQuery());
@@ -67,23 +66,27 @@ public class SQLConsoleFrame extends JFrame {
             return;
         }
 
-        String normalized = sql.replaceAll("\\s+", " ").trim().toLowerCase();
-        if (!normalized.startsWith("select")) {
-            statusLabel.setText("Επιτρέπονται μόνο SELECT queries.");
-            return;
-        }
-
         try (Connection conn = DBConnection.getConnection();
-             Statement stmt = conn.createStatement();
-             ResultSet rs = stmt.executeQuery(sql)) {
+             Statement stmt = conn.createStatement()) {
 
-            DefaultTableModel model = buildTableModel(rs);
-            table.setModel(model);
+            boolean isSelect = sql.trim().toLowerCase().startsWith("select");
 
-            statusLabel.setText("OK - " + model.getRowCount() + " rows");
+            if (isSelect) {
+                try (ResultSet rs = stmt.executeQuery(sql)) {
+                    DefaultTableModel model = buildTableModel(rs);
+                    table.setModel(model);
+                    statusLabel.setText("OK - " + model.getRowCount() + " εγγραφές βρέθηκαν");
+                }
+            } else {
+                int rowsAffected = stmt.executeUpdate(sql);
+
+                table.setModel(new DefaultTableModel());
+                statusLabel.setText("Επιτυχία - Επηρεάστηκαν " + rowsAffected + " γραμμές");
+            }
 
         } catch (Exception ex) {
             statusLabel.setText("Σφάλμα: " + ex.getMessage());
+            ex.printStackTrace();
         }
     }
 
