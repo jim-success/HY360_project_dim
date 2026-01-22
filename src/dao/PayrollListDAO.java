@@ -14,7 +14,7 @@ public class PayrollListDAO {
         cols.add("Υπάλληλος");
         cols.add("Κατηγορία");
         cols.add("Βασικός (€)");
-        cols.add("Προϋπηρεσία (€)"); // NEW: Προσθήκη στήλης για να φαίνεται η αύξηση
+        cols.add("Προϋπηρεσία (€)");
         cols.add("Οικογενειακό (€)");
         cols.add("Ειδικό (€)");
         cols.add("Σύνολο (€)");
@@ -95,7 +95,7 @@ public class PayrollListDAO {
                     row.add(fullName);
                     row.add(cat);
                     row.add(rs.getBigDecimal("base_salary"));
-                    row.add(rs.getBigDecimal("service_allowance")); // NEW: Προσθήκη στα data
+                    row.add(rs.getBigDecimal("service_allowance"));
                     row.add(rs.getBigDecimal("family_allowance"));
                     row.add(rs.getBigDecimal("special_allowance"));
                     row.add(rs.getBigDecimal("total"));
