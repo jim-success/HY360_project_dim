@@ -1,6 +1,7 @@
 package dao;
 
 import db.DBConnection;
+
 import java.sql.*;
 import java.time.LocalDate;
 import java.util.LinkedHashMap;
@@ -8,7 +9,6 @@ import java.util.Map;
 import java.util.Vector;
 
 public class PayrollDAO {
-
     public static double calculateSalary(int employeeId) {
         String sql =
                 "SELECT e.marital_status, " +
@@ -33,22 +33,23 @@ public class PayrollDAO {
                 double salary = 0.0;
 
                 double basePerm = rs.getDouble("base_salary");
-                if (basePerm > 0) { // Μόνιμος: Βασικός + 15% για κάθε χρόνο υπηρεσίας
+                if (basePerm > 0) {
                     int years = rs.getInt("years_of_service");
                     salary = basePerm + (years > 0 ? basePerm * 0.15 * years : 0);
-                } else { // Συμβασιούχος
+                } else {
                     salary = rs.getDouble("monthly_salary");
                 }
 
-                // Οικογενειακό επίδομα
                 double familyRate = ("married".equalsIgnoreCase(marital) ? 0.05 : 0) + (children * 0.05);
                 salary += (salary * familyRate);
 
-                // Ειδικά επιδόματα
                 salary += rs.getDouble("research_allowance") + rs.getDouble("library_allowance");
                 return salary;
             }
-        } catch (Exception e) { e.printStackTrace(); return 0.0; }
+        } catch (Exception e) {
+            e.printStackTrace();
+            return 0.0;
+        }
     }
 
     public static boolean insertPayment(int employeeId, double amount) {
@@ -60,7 +61,9 @@ public class PayrollDAO {
             ps.setDouble(3, amount);
             ps.executeUpdate();
             return true;
-        } catch (SQLException e) { return false; }
+        } catch (SQLException e) {
+            return false;
+        }
     }
 
     public static Vector<Vector<Object>> getPayrollHistory() {
@@ -74,12 +77,17 @@ public class PayrollDAO {
                 row.add(rs.getDouble("amount"));
                 data.add(row);
             }
-        } catch (SQLException e) {}
+        } catch (SQLException e) {
+        }
         return data;
     }
 
     public static Vector<String> getPayrollHistoryColumns() {
-        Vector<String> c = new Vector<>(); c.add("Υπάλληλος"); c.add("Ημερομηνία"); c.add("Ποσό (€)"); return c;
+        Vector<String> c = new Vector<>();
+        c.add("Υπάλληλος");
+        c.add("Ημερομηνία");
+        c.add("Ποσό (€)");
+        return c;
     }
 
     public static Vector<Vector<Object>> getPayrollByDepartment() {
@@ -96,11 +104,17 @@ public class PayrollDAO {
                 row.add(rs.getDouble("total"));
                 data.add(row);
             }
-        } catch (Exception e) {}
+        } catch (Exception e) {
+        }
         return data;
     }
+
     public static Vector<String> getPayrollByDepartmentColumns() {
-        Vector<String> c = new Vector<>(); c.add("Τμήμα"); c.add("Υπάλληλοι"); c.add("Σύνολο (€)"); return c;
+        Vector<String> c = new Vector<>();
+        c.add("Τμήμα");
+        c.add("Υπάλληλοι");
+        c.add("Σύνολο (€)");
+        return c;
     }
 
     public static Vector<Vector<Object>> getSalaryStatsByDepartmentJava() {
@@ -117,14 +131,25 @@ public class PayrollDAO {
                 Vector<Double> vals = map.get(dept);
                 double min = vals.stream().min(Double::compare).orElse(0.0);
                 double max = vals.stream().max(Double::compare).orElse(0.0);
-                double avg = vals.stream().mapToDouble(d->d).average().orElse(0.0);
-                Vector<Object> r = new Vector<>(); r.add(dept); r.add(min); r.add(max); r.add(avg);
+                double avg = vals.stream().mapToDouble(d -> d).average().orElse(0.0);
+                Vector<Object> r = new Vector<>();
+                r.add(dept);
+                r.add(min);
+                r.add(max);
+                r.add(avg);
                 data.add(r);
             }
-        } catch(Exception e){}
+        } catch (Exception e) {
+        }
         return data;
     }
+
     public static Vector<String> getSalaryStatsByDepartmentColumns() {
-        Vector<String> c = new Vector<>(); c.add("Τμήμα"); c.add("Min"); c.add("Max"); c.add("Avg"); return c;
+        Vector<String> c = new Vector<>();
+        c.add("Τμήμα");
+        c.add("Min");
+        c.add("Max");
+        c.add("Avg");
+        return c;
     }
 }

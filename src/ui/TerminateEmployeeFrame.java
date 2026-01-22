@@ -41,13 +41,13 @@ public class TerminateEmployeeFrame extends JFrame {
 
                     JOptionPane.showMessageDialog(
                             this,
-                            "Ο υπάλληλος σημειώθηκε προς απόλυση ✔\n"
+                            "Ο υπάλληλος σημειώθηκε προς απόλυση\n"
                                     + "Θα απενεργοποιηθεί μετά την πληρωμή."
                     );
 
                     dispose();
                 } else {
-                    JOptionPane.showMessageDialog(this, "Σφάλμα ❌");
+                    JOptionPane.showMessageDialog(this, "Σφάλμα");
                 }
             }
         });

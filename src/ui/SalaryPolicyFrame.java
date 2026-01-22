@@ -10,7 +10,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class SalaryPolicyFrame extends JFrame {
-
     private JTable table;
     private DefaultTableModel model;
 
@@ -29,7 +28,7 @@ public class SalaryPolicyFrame extends JFrame {
                 if (col == 2) return "TEACH_PERMANENT".equals(category);
                 if (col == 3) return "TEACH_CONTRACT".equals(category);
 
-                return col == 1; // base salary editable για όλους
+                return col == 1;
             }
         };
 
@@ -82,12 +81,10 @@ public class SalaryPolicyFrame extends JFrame {
 
                 rows.add(r);
             }
-
             SalaryPolicyDAO.updatePoliciesNoDecrease(rows);
 
-            JOptionPane.showMessageDialog(this, "Οι αλλαγές αποθηκεύτηκαν ✔");
+            JOptionPane.showMessageDialog(this, "Οι αλλαγές αποθηκεύτηκαν");
             load();
-
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, ex.getMessage(), "Σφάλμα", JOptionPane.ERROR_MESSAGE);
         }

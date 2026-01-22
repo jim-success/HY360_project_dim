@@ -1,12 +1,12 @@
 package ui;
 
 import db.DBConnection;
+
 import javax.swing.*;
 import java.awt.*;
 import java.sql.Connection;
 
 public class MainFrame extends JFrame {
-
     public MainFrame() {
         setTitle("Payroll Application (3NF Version)");
         setSize(420, 430);
@@ -26,7 +26,7 @@ public class MainFrame extends JFrame {
         JButton salaryStatsBtn = new JButton("Στατιστικά Μισθών");
         JButton payrollStatusByCategoryBtn = new JButton("Κατάσταση Μισθοδοσίας");
         JButton sqlConsoleBtn = new JButton("SQL Console");
-        JButton salaryPolicyBtn = new JButton("Μεταβολή Βασικών Μισθών & Επιδομάτων");
+        JButton salaryPolicyBtn = new JButton("Μεταβολή Βασικών Μισθών και Επιδομάτων");
         salaryPolicyBtn.addActionListener(e -> new SalaryPolicyFrame().setVisible(true));
 
         viewEmployeesBtn.addActionListener(e -> new EmployeesFrame().setVisible(true));
@@ -51,7 +51,6 @@ public class MainFrame extends JFrame {
         buttonsPanel.add(reportDeptBtn);
         buttonsPanel.add(salaryStatsBtn);
         buttonsPanel.add(payrollStatusByCategoryBtn);
-        // Το SalaryPolicy αφαιρέθηκε λόγω 3NF
         buttonsPanel.add(sqlConsoleBtn);
         buttonsPanel.add(salaryPolicyBtn);
 
@@ -64,9 +63,9 @@ public class MainFrame extends JFrame {
         add(statusPanel, BorderLayout.SOUTH);
 
         try (Connection conn = DBConnection.getConnection()) {
-            statusLabel.setText("Σύνδεση με βάση 'testdatabase': ΕΠΙΤΥΧΗΣ ✅");
+            statusLabel.setText("Σύνδεση με βάση ΕΠΙΤΥΧΗΣ");
         } catch (Exception e) {
-            statusLabel.setText("Αποτυχία σύνδεσης ❌");
+            statusLabel.setText("Αποτυχία σύνδεσης");
         }
     }
 }

@@ -9,7 +9,6 @@ import java.sql.*;
 import java.util.Vector;
 
 public class SQLConsoleFrame extends JFrame {
-
     private final JTextArea queryArea = new JTextArea(6, 80);
     private final JTable table = new JTable();
     private final JLabel statusLabel = new JLabel(" ");
@@ -68,7 +67,6 @@ public class SQLConsoleFrame extends JFrame {
             return;
         }
 
-        // SELECT-only protection
         String normalized = sql.replaceAll("\\s+", " ").trim().toLowerCase();
         if (!normalized.startsWith("select")) {
             statusLabel.setText("Επιτρέπονται μόνο SELECT queries.");
@@ -82,7 +80,7 @@ public class SQLConsoleFrame extends JFrame {
             DefaultTableModel model = buildTableModel(rs);
             table.setModel(model);
 
-            statusLabel.setText("OK — " + model.getRowCount() + " rows");
+            statusLabel.setText("OK - " + model.getRowCount() + " rows");
 
         } catch (Exception ex) {
             statusLabel.setText("Σφάλμα: " + ex.getMessage());

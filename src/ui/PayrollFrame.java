@@ -8,8 +8,7 @@ import java.awt.*;
 import java.util.Map;
 
 public class PayrollFrame extends JFrame {
-
-    private double calculatedAmount = -1; // -1 = δεν έχει υπολογιστεί
+    private double calculatedAmount = -1;
 
     public PayrollFrame() {
         setTitle("Καταβολή Μισθοδοσίας");
@@ -29,27 +28,24 @@ public class PayrollFrame extends JFrame {
         JButton calculateBtn = new JButton("Υπολογισμός");
         JButton payBtn = new JButton("Καταβολή");
 
-        // Αν αλλάξει υπάλληλος → reset
         employeeBox.addActionListener(e -> {
             calculatedAmount = -1;
             amountLabel.setText("Ποσό: -");
         });
 
-        // ΥΠΟΛΟΓΙΣΜΟΣ ΜΙΣΘΟΥ
         calculateBtn.addActionListener(e -> {
             int index = employeeBox.getSelectedIndex();
             int empId = employeeIds[index];
 
             calculatedAmount = PayrollDAO.calculateSalary(empId);
-            amountLabel.setText("Ποσό: " + calculatedAmount + " €");
+            amountLabel.setText("Ποσό: " + calculatedAmount + " ευρώ");
         });
 
-        // ΚΑΤΑΒΟΛΗ ΜΙΣΘΟΔΟΣΙΑΣ
         payBtn.addActionListener(e -> {
             if (calculatedAmount < 0) {
                 JOptionPane.showMessageDialog(
                         this,
-                        "Πρέπει πρώτα να γίνει υπολογισμός μισθού ❗"
+                        "Πρέπει πρώτα να γίνει υπολογισμός μισθού"
                 );
                 return;
             }
@@ -62,13 +58,13 @@ public class PayrollFrame extends JFrame {
             if (success) {
                 JOptionPane.showMessageDialog(
                         this,
-                        "Η μισθοδοσία καταχωρήθηκε επιτυχώς ✔"
+                        "Η μισθοδοσία καταχωρήθηκε επιτυχώς"
                 );
                 dispose();
             } else {
                 JOptionPane.showMessageDialog(
                         this,
-                        "Σφάλμα κατά την καταβολή ❌"
+                        "Σφάλμα κατά την καταβολή"
                 );
             }
         });

@@ -6,7 +6,6 @@ import javax.swing.*;
 import java.awt.*;
 
 public class PayrollHistoryFrame extends JFrame {
-
     public PayrollHistoryFrame() {
         setTitle("Ιστορικό Μισθοδοσίας");
         setSize(500, 300);
