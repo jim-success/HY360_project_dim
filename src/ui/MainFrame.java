@@ -19,11 +19,11 @@ public class MainFrame extends JFrame {
         JButton viewEmployeesBtn = new JButton("Προβολή Υπαλλήλων");
         JButton addEmployeeBtn = new JButton("Προσθήκη Υπαλλήλου");
         JButton payrollBtn = new JButton("Καταβολή Μισθοδοσίας");
-        JButton payrollHistoryBtn = new JButton("Ιστορικό Μισθοδοσίας");
+        JButton payrollHistoryBtn = new JButton("Στοιχεία και μισθοδοσία συγκεκριμένου υπαλλήλου");
         JButton reportDeptBtn = new JButton("Μισθοδοσία ανά Τμήμα");
         JButton editEmployeeBtn = new JButton("Επεξεργασία Υπαλλήλου");
         JButton terminateEmployeeBtn = new JButton("Απόλυση / Συνταξιοδότηση");
-        JButton salaryStatsBtn = new JButton("Στατιστικά Μισθών");
+        JButton salaryStatsBtn = new JButton("Μεγιστος, ελάχιστος και μέσος μισθός ανά κατηγορία προσωπικού");
         JButton payrollStatusByCategoryBtn = new JButton("Συνολικό ύψος μισθοδοσίας ανά κατηγορία προσωπικού");
         JButton sqlConsoleBtn = new JButton("SQL Console");
         JButton salaryPolicyBtn = new JButton("Μεταβολή Βασικών Μισθών και Επιδομάτων");
