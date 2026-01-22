@@ -152,4 +152,35 @@ public class PayrollDAO {
         c.add("Avg");
         return c;
     }
+
+
+
+    public static Vector<Vector<Object>> getPayrollHistoryByEmployee(int employeeId) {
+        Vector<Vector<Object>> data = new Vector<>();
+
+        String sql = "SELECT e.first_name, e.last_name, p.payment_date, p.amount " +
+                "FROM payroll_payment p " +
+                "JOIN employee e ON p.employee_id = e.employee_id " +
+                "WHERE p.employee_id = ? " +
+                "ORDER BY p.payment_date DESC";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, employeeId);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Vector<Object> row = new Vector<>();
+                    row.add(rs.getString("first_name") + " " + rs.getString("last_name"));
+                    row.add(rs.getDate("payment_date"));
+                    row.add(rs.getDouble("amount"));
+                    data.add(row);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return data;
+    }
 }

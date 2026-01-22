@@ -71,4 +71,24 @@ public class StatisticsDAO {
         }
         return list;
     }
+
+
+    public static double getAverageSalaryForYear(int year) {
+        String sql = "SELECT AVG(amount) FROM payroll_payment WHERE YEAR(payment_date) = ?";
+
+        try (Connection conn = DBConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, year);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getObject(1) != null ? rs.getDouble(1) : 0.0;
+                }
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return 0.0;
+    }
 }

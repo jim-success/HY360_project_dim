@@ -28,6 +28,7 @@ public class MainFrame extends JFrame {
         JButton sqlConsoleBtn = new JButton("SQL Console");
         JButton salaryPolicyBtn = new JButton("Μεταβολή Βασικών Μισθών και Επιδομάτων");
         JButton payrollListByCategoryBtn = new JButton("Λίστα Μισθών ανά Κατηγορία");
+        JButton avgIncreaseBtn = new JButton("Μέση Αύξηση Μισθών (Στατιστικά)");
         payrollListByCategoryBtn.addActionListener(e -> new PayrollListByCategoryFrame().setVisible(true));
 
         salaryPolicyBtn.addActionListener(e -> new SalaryPolicyFrame().setVisible(true));
@@ -42,6 +43,7 @@ public class MainFrame extends JFrame {
         salaryStatsBtn.addActionListener(e -> new SalaryStatsByCategoryFrame().setVisible(true));
         payrollStatusByCategoryBtn.addActionListener(e -> new PayrollStatusByCategoryFrame().setVisible(true));
         sqlConsoleBtn.addActionListener(e -> new SQLConsoleFrame().setVisible(true));
+        avgIncreaseBtn.addActionListener(e -> new SalaryIncreaseFrame().setVisible(true));
 
         JPanel buttonsPanel = new JPanel(new GridLayout(0, 1, 10, 10));
         buttonsPanel.setBorder(BorderFactory.createEmptyBorder(10, 10, 10, 10));
@@ -54,6 +56,7 @@ public class MainFrame extends JFrame {
         buttonsPanel.add(payrollHistoryBtn);
         buttonsPanel.add(reportDeptBtn);
         buttonsPanel.add(salaryStatsBtn);
+        buttonsPanel.add(avgIncreaseBtn);
         buttonsPanel.add(payrollStatusByCategoryBtn);
         buttonsPanel.add(sqlConsoleBtn);
         buttonsPanel.add(salaryPolicyBtn);
